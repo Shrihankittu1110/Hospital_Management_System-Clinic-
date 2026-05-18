@@ -1,0 +1,324 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
+import MessagePopup from './MessagePopup';
+
+const SignUp = ({ onClose }) => {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
+
+  const [errors, setErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [popup, setPopup] = useState(null);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const validateForm = () => {
+    let newErrors = {};
+    if (!formData.firstName) newErrors.firstName = "First name is required";
+    if (!formData.lastName) newErrors.lastName = "Last name is required";
+    if (!formData.email) newErrors.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Email is invalid";
+    if (!formData.password) newErrors.password = "Password is required";
+    else if (formData.password.length < 6) newErrors.password = "Password must be at least 6 characters";
+    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (validateForm()) {
+      try {
+        const response = await fetch('http://localhost:5000/api/signup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            password: formData.password,
+            role: 'patient',
+          }),
+        });
+        if (response.ok) {
+          setPopup({
+            title: 'Account Created',
+            message: 'Your patient account has been created successfully. You can log in now.',
+            variant: 'success',
+            confirmLabel: 'Go to Login',
+            onConfirm: () => {
+              if (onClose) {
+                onClose();
+              } else {
+                navigate('/login');
+              }
+            },
+          });
+        } else {
+          const errorData = await response.json();
+          setErrors({ ...errors, submit: errorData.error });
+        }
+      } catch (error) {
+        setErrors({ ...errors, submit: 'An error occurred. Please try again.' });
+      }
+    }
+  };
+
+  const inputClass = "mt-1 block w-full rounded-md border-blue-200 shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-400 focus:ring-opacity-50 px-3 py-2";
+
+  if (onClose) {
+    // Modal version
+    return (
+      <div className="w-full bg-white flex flex-col">
+        <MessagePopup
+          open={Boolean(popup)}
+          title={popup?.title}
+          message={popup?.message}
+          variant={popup?.variant || 'success'}
+          confirmLabel={popup?.confirmLabel || 'OK'}
+          onConfirm={popup?.onConfirm}
+          onClose={() => setPopup(null)}
+        />
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6">
+          <h2 className="text-2xl font-bold text-center">Sign Up as a Patient</h2>
+          <p className="text-center text-blue-100">Create your account to access health services</p>
+        </div>
+        <div className="p-6 max-h-[calc(90vh-250px)] overflow-y-auto">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-blue-800 text-left">First Name</label>
+                <input 
+                  id="firstName" 
+                  name="firstName" 
+                  value={formData.firstName} 
+                  onChange={handleChange} 
+                  className={inputClass}
+                  required
+                />
+                {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
+              </div>
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-blue-800 text-left">Last Name</label>
+                <input 
+                  id="lastName" 
+                  name="lastName" 
+                  value={formData.lastName} 
+                  onChange={handleChange} 
+                  className={inputClass}
+                  required
+                />
+                {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
+              </div>
+            </div>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-blue-800 text-left">Email</label>
+              <input 
+                id="email" 
+                name="email" 
+                type="email" 
+                value={formData.email} 
+                onChange={handleChange} 
+                className={inputClass}
+                required
+              />
+              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+            </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-blue-800 text-left">Password</label>
+              <div className="relative">
+                <input 
+                  id="password" 
+                  name="password" 
+                  type={showPassword ? 'text' : 'password'} 
+                  value={formData.password} 
+                  onChange={handleChange} 
+                  className={inputClass}
+                  required
+                />
+                <button 
+                  type="button" 
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-blue-600 hover:text-blue-800"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+            </div>
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-blue-800 text-left">Confirm Password</label>
+              <div className="relative">
+                <input 
+                  id="confirmPassword" 
+                  name="confirmPassword" 
+                  type={showConfirmPassword ? 'text' : 'password'} 
+                  value={formData.confirmPassword} 
+                  onChange={handleChange} 
+                  className={inputClass}
+                  required
+                />
+                <button 
+                  type="button" 
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-blue-600 hover:text-blue-800"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
+            </div>
+            <button 
+              type="submit" 
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            >
+              Create Account
+            </button>
+          </form>
+        </div>
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-t border-blue-100 mt-auto">
+          <p className="text-sm text-blue-600 text-center">
+            Already have an account?{" "}
+            <button onClick={() => onClose()} className="text-blue-600 font-semibold hover:underline">
+              Log in
+            </button>
+          </p>
+          {errors.submit && <p className="text-red-500 text-xs mt-1">{errors.submit}</p>}
+        </div>
+      </div>
+    );
+  }
+
+  // Standalone page version
+  return (
+    <div className="container mx-auto bg-blue-50 min-h-screen flex items-center justify-center max-w-full">
+      <MessagePopup
+        open={Boolean(popup)}
+        title={popup?.title}
+        message={popup?.message}
+        variant={popup?.variant || 'success'}
+        confirmLabel={popup?.confirmLabel || 'OK'}
+        onConfirm={popup?.onConfirm}
+        onClose={() => setPopup(null)}
+      />
+      <div className="w-full max-w-md bg-white rounded-lg shadow-lg">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg p-6">
+          <h2 className="text-2xl font-bold text-center">Sign Up as a Patient</h2>
+          <p className="text-center text-blue-100">Create your account to access health services</p>
+        </div>
+        <div className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-blue-800 text-left">First Name</label>
+                <input 
+                  id="firstName" 
+                  name="firstName" 
+                  value={formData.firstName} 
+                  onChange={handleChange} 
+                  className={inputClass}
+                />
+                {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
+              </div>
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-blue-800 text-left">Last Name</label>
+                <input 
+                  id="lastName" 
+                  name="lastName" 
+                  value={formData.lastName} 
+                  onChange={handleChange} 
+                  className={inputClass}
+                />
+                {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
+              </div>
+            </div>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-blue-800 text-left">Email</label>
+              <input 
+                id="email" 
+                name="email" 
+                type="email" 
+                value={formData.email} 
+                onChange={handleChange} 
+                className={inputClass}
+              />
+              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+            </div>
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-blue-800 text-left">Password</label>
+              <div className="relative">
+                <input 
+                  id="password" 
+                  name="password" 
+                  type={showPassword ? 'text' : 'password'} 
+                  value={formData.password} 
+                  onChange={handleChange} 
+                  className={inputClass}
+                />
+                <button 
+                  type="button" 
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-blue-600 hover:text-blue-800"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+            </div>
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-blue-800 text-left">Confirm Password</label>
+              <div className="relative">
+                <input 
+                  id="confirmPassword" 
+                  name="confirmPassword" 
+                  type={showConfirmPassword ? 'text' : 'password'} 
+                  value={formData.confirmPassword} 
+                  onChange={handleChange} 
+                  className={inputClass}
+                />
+                <button 
+                  type="button" 
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-blue-600 hover:text-blue-800"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
+            </div>
+            <button 
+              type="submit" 
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+            >
+              Create Account
+            </button>
+          </form>
+        </div>
+        <div className="bg-blue-50 px-6 py-4 rounded-b-lg">
+          <p className="text-sm text-blue-600 text-center">
+            Already have an account?{" "}
+            <button onClick={() => navigate('/login')} className="text-blue-600 font-semibold hover:underline">
+              Log in
+            </button>
+          </p>
+          {errors.submit && <p className="text-red-500 text-xs mt-1">{errors.submit}</p>}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SignUp;

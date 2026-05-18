@@ -1,1 +1,23 @@
-* text=auto
+* text=auto eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+
+# Exclude local env files and node_modules from archive exports
+.env export-ignore
+.env.* export-ignore
+/frontend/node_modules/ export-ignore
+/backend/node_modules/ export-ignore
+/node_modules/ export-ignore
+
+# Logs and build outputs
+*.log export-ignore
+/frontend/build/ export-ignore
+/backend/build/ export-ignore
+
+# Editor configs
+.vscode/ export-ignore
+.idea/ export-ignore

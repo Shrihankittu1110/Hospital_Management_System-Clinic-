@@ -113,7 +113,7 @@ router.post('/generate', auth, async (req, res) => {
       bill: populatedBill
     });
   } catch (error) {
-    console.error('Error generating bill:', error);
+    require('../utils/logger').error('Error generating bill:', error);
     res.status(500).send({ error: error.message || 'Server error' });
   }
 });
@@ -134,7 +134,7 @@ router.get('/doctor/bills', auth, async (req, res) => {
 
     res.json(bills);
   } catch (error) {
-    console.error('Error fetching doctor bills:', error);
+    require('../utils/logger').error('Error fetching doctor bills:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -165,7 +165,7 @@ router.get('/:billId', auth, async (req, res) => {
 
     res.json(bill);
   } catch (error) {
-    console.error('Error fetching bill details:', error);
+    require('../utils/logger').error('Error fetching bill details:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -214,7 +214,7 @@ router.put('/:billId/payment-status', auth, async (req, res) => {
 
     res.json({ message: 'Payment status updated', bill: populatedBill });
   } catch (error) {
-    console.error('Error updating payment status:', error);
+    require('../utils/logger').error('Error updating payment status:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -250,7 +250,7 @@ router.get('/doctor/stats/overview', auth, async (req, res) => {
       pendingRevenue: pendingRevenue[0]?.totalAmount || 0
     });
   } catch (error) {
-    console.error('Error fetching doctor statistics:', error);
+    require('../utils/logger').error('Error fetching doctor statistics:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -299,7 +299,7 @@ router.post('/:billId/pay-with-upi', auth, async (req, res) => {
       bill: await bill.populate('patientId', 'firstName lastName email').populate('doctorId', 'firstName lastName specialty').populate('prescriptionId')
     });
   } catch (error) {
-    console.error('Error processing UPI payment:', error);
+    require('../utils/logger').error('Error processing UPI payment:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -321,7 +321,7 @@ router.get('/patient/my-bills', auth, async (req, res) => {
 
     res.json(bills);
   } catch (error) {
-    console.error('Error fetching patient bills:', error);
+    require('../utils/logger').error('Error fetching patient bills:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -358,7 +358,7 @@ router.delete('/:billId', auth, async (req, res) => {
 
     res.json({ message: 'Bill deleted successfully' });
   } catch (error) {
-    console.error('Error deleting bill:', error);
+    require('../utils/logger').error('Error deleting bill:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });

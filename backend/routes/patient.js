@@ -1,9 +1,9 @@
 const express = require('express');
 const Patient = require('../models/User');
-const jwt = require('jsonwebtoken');
 const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const Prescription = require('../models/Prescription');
+const auth = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -15,21 +15,7 @@ const getDayRange = (dateValue) => {
   return { start, end };
 };
 
-const auth = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-
-  if (!token) {
-    return res.status(401).send({ error: 'No token provided' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, 'your_jwt_secret');
-    req.user = decoded;
-    next();
-  } catch (error) {
-    res.status(401).send({ error: 'Invalid token' });
-  }
-};
+// auth middleware imported above
 
 router.get('/profile', auth, async (req, res) => {
   try {
@@ -39,7 +25,7 @@ router.get('/profile', auth, async (req, res) => {
     }
     res.json(patient);
   } catch (error) {
-    console.error(error);
+    require('../utils/logger').error(error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -59,7 +45,7 @@ router.put('/profile', auth, async (req, res) => {
     delete patientWithoutPassword.password;
     res.json(patientWithoutPassword);
   } catch (error) {
-    console.error(error);
+    require('../utils/logger').error(error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -129,7 +115,7 @@ router.post('/book-appointment', auth, async (req, res) => {
     await appointment.save();
     res.status(201).json({ message: 'Appointment booked successfully', appointment });
   } catch (error) {
-    console.error(error);
+    require('../utils/logger').error(error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -228,7 +214,7 @@ router.get('/appointments', auth, async (req, res) => {
     
     res.json(appointments);
   } catch (error) {
-    console.error('Error fetching appointments:', error);
+    require('../utils/logger').error('Error fetching appointments:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -255,7 +241,7 @@ router.get('/history', auth, async (req, res) => {
 
     res.json({ appointments, prescriptions });
   } catch (error) {
-    console.error('Error fetching history:', error);
+    require('../utils/logger').error('Error fetching history:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -267,7 +253,7 @@ router.get('/care-team', auth, async (req, res) => {
     const careTeam = await Doctor.find({ _id: { $in: appointments } }).select('firstName lastName specialty');
     res.json(careTeam);
   } catch (error) {
-    console.error('Error fetching care team:', error);
+    require('../utils/logger').error('Error fetching care team:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -278,7 +264,7 @@ router.get('/prescriptions', auth, async (req, res) => {
     const prescriptions = await Prescription.find({ patientId }).populate('doctorId', 'firstName lastName');
     res.json(prescriptions);
   } catch (error) {
-    console.error('Error fetching prescriptions:', error);
+    require('../utils/logger').error('Error fetching prescriptions:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -299,7 +285,7 @@ router.delete('/appointments/:appointmentId', auth, async (req, res) => {
     await Appointment.findByIdAndDelete(appointmentId);
     res.json({ message: 'Appointment cancelled successfully' });
   } catch (error) {
-    console.error('Error cancelling appointment:', error);
+    require('../utils/logger').error('Error cancelling appointment:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });

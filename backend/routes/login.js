@@ -29,7 +29,7 @@ router.post('/', async (req, res) => {
       return res.status(400).send({ error: 'Invalid password' });
     }
 
-    const token = jwt.sign({ id: user._id, role: user.role }, 'your_jwt_secret', { expiresIn: '24h' });
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
     res.send({ token, role: user.role });
   } catch (error) {
     res.status(500).send({ error: 'Server error' });

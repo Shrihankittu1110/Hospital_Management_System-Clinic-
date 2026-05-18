@@ -1,27 +1,12 @@
 const express = require('express');
 const Doctor = require('../models/Doctor');
 const Admin = require('../models/Admin');
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Appointment = require('../models/Appointment');
+const auth = require('../middleware/auth');
 
 const router = express.Router();
 
-const auth = (req, res, next) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
-
-  if (!token) {
-    return res.status(401).send({ error: 'No token provided' });
-  }
-
-  try {
-    const decoded = jwt.verify(token, 'your_jwt_secret');
-    req.user = decoded;
-    next();
-  } catch (error) {
-    res.status(401).send({ error: 'Invalid token' });
-  }
-};
 
 router.post('/add-doctor', auth, async (req, res) => {
   if (req.user.role !== 'admin') {
@@ -68,8 +53,8 @@ router.get('/profile', auth, async (req, res) => {
       return res.status(404).send({ error: 'Admin not found' });
     }
     res.json(admin);
-  } catch (error) {
-    console.error(error);
+    } catch (error) {
+    require('../utils/logger').error(error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -89,7 +74,7 @@ router.put('/profile', auth, async (req, res) => {
     delete adminWithoutPassword.password;
     res.json({ message: 'Profile updated successfully', admin: adminWithoutPassword });
   } catch (error) {
-    console.error(error);
+    require('../utils/logger').error(error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -99,7 +84,7 @@ router.get('/total-doctors', auth, async (req, res) => {
     const totalDoctors = await Doctor.countDocuments();
     res.json({ totalDoctors });
   } catch (error) {
-    console.error('Error fetching total doctors:', error);
+    require('../utils/logger').error('Error fetching total doctors:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -109,7 +94,7 @@ router.get('/total-patients', auth, async (req, res) => {
     const totalPatients = await User.countDocuments({ role: 'patient' });
     res.json({ totalPatients });
   } catch (error) {
-    console.error('Error fetching total patients:', error);
+    require('../utils/logger').error('Error fetching total patients:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -127,7 +112,7 @@ router.get('/doctor-overview', auth, async (req, res) => {
     }));
     res.json(doctorOverview);
   } catch (error) {
-    console.error('Error fetching doctor overview:', error);
+    require('../utils/logger').error('Error fetching doctor overview:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -144,7 +129,7 @@ router.get('/patient-overview', auth, async (req, res) => {
     }));
     res.json(patientOverview);
   } catch (error) {
-    console.error('Error fetching patient overview:', error);
+    require('../utils/logger').error('Error fetching patient overview:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -163,7 +148,7 @@ router.get('/appointments', auth, async (req, res) => {
 
     res.json(appointments);
   } catch (error) {
-    console.error('Error fetching appointments:', error);
+    require('../utils/logger').error('Error fetching appointments:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });
@@ -192,7 +177,7 @@ router.put('/appointments/:appointmentId/status', auth, async (req, res) => {
 
     res.json({ message: `Appointment marked as ${status}`, appointment });
   } catch (error) {
-    console.error('Error updating appointment status:', error);
+    require('../utils/logger').error('Error updating appointment status:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });

@@ -10,9 +10,9 @@ if (!process.env.MONGO_URI) {
 }
 
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('Connected to MongoDB'))
+  .then(() => require('./utils/logger').info('Connected to MongoDB'))
   .catch((err) => {
-    console.error('Could not connect to MongoDB', err);
+          require('./utils/logger').error('Could not connect to MongoDB', err);
     process.exit(1);
   });
 
@@ -27,9 +27,9 @@ async function createAdmin() {
 
   try {
     await admin.save();
-    console.log('Admin created successfully');
+    require('./utils/logger').info('Admin created successfully');
   } catch (error) {
-    console.error('Error creating admin:', error);
+      require('./utils/logger').error('Error creating admin:', error);
   } finally {
     mongoose.connection.close();
   }

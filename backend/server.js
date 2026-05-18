@@ -19,10 +19,16 @@ if (!process.env.MONGO_URI) {
   console.warn(`MONGO_URI is not set. Falling back to ${DEFAULT_MONGO_URI}.`);
 }
 
+// Ensure critical secrets are present
+if (!process.env.JWT_SECRET) {
+  console.error('Missing required environment variable: JWT_SECRET');
+  process.exit(1);
+}
+
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('Connected to MongoDB'))
+  .then(() => require('./utils/logger').info('Connected to MongoDB'))
   .catch((err) => {
-    console.error('Could not connect to MongoDB', err);
+    require('./utils/logger').error('Could not connect to MongoDB', err);
     process.exit(1);
   });
 
@@ -39,6 +45,9 @@ app.get('/', (req, res) => {
   res.send('Welcome to the Hospital Management System API');
 });
 
+// Register centralized error handler
+app.use(require('./middleware/errorHandler'));
+
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  require('./utils/logger').info(`Server is running on port ${PORT}`);
 });

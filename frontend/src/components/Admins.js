@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, FileText, Users, ChevronDown, Home, UserCircle, Eye, EyeOff, Hospital, Stethoscope, Activity, DollarSign, UserPlus, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MessagePopup from './MessagePopup';
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+import { API_BASE_URL } from '../utils/apiBase';
 
 const Button = ({ children, variant = 'primary', className = '', ...props }) => (
   <button

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Shield, User, Stethoscope, Eye, EyeOff, Home as HomeIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MessagePopup from './MessagePopup';
+import { API_BASE_URL } from '../utils/apiBase';
 
 const Login = ({ onClose }) => {
   const navigate = useNavigate();
@@ -21,8 +22,7 @@ const Login = ({ onClose }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${apiBase}/login`, {
+      const response = await fetch(`${API_BASE_URL}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

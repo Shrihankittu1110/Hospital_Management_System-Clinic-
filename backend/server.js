@@ -11,7 +11,12 @@ const DEFAULT_MONGO_URI = 'mongodb://127.0.0.1:27017/hospital-management';
 const MONGO_URI = process.env.MONGO_URI || DEFAULT_MONGO_URI;
 
 // Middleware
-app.use(cors()); 
+app.use(
+  cors({
+    origin: "https://hospital-management-system-clinic-4.vercel.app",
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // MongoDB connection

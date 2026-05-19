@@ -647,7 +647,6 @@ export default function PatientDashboard() {
 
   const renderBills = () => {
     const unpaidBills = bills.filter(bill => bill.paymentStatus === 'unpaid' || bill.paymentStatus === 'partial');
-    const paidBills = bills.filter(bill => bill.paymentStatus === 'paid');
 
     return (
       <div className="space-y-6">

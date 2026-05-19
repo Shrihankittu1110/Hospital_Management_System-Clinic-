@@ -814,7 +814,6 @@ export default function DoctorDashboard() {
 
   const renderBills = () => {
     const unpaidBills = bills.filter(bill => bill.paymentStatus === 'unpaid' || bill.paymentStatus === 'partial');
-    const paidBills = bills.filter(bill => bill.paymentStatus === 'paid');
 
     const handlePaymentStatusUpdate = async (billId, newStatus) => {
       try {

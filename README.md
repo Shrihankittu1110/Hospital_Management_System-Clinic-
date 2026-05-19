@@ -73,9 +73,11 @@ Environment variables
 	- `MONGO_URI` — MongoDB connection string (optional)
 	- `PORT` — backend port (default 5000)
 	- `JWT_SECRET` — secret for signing/verifying JWTs (required for production)
+	- `CORS_ORIGIN` — allowed frontend origin, or a comma-separated list of origins
 
 - Frontend
-	- `REACT_APP_API_BASE_URL` — optional base URL for API requests (default `http://localhost:5000`)
+	- `REACT_APP_API_BASE_URL` — preferred base URL for API requests (default `http://localhost:5000`)
+	- `REACT_APP_API_URL` — legacy alias still supported for existing setups
 
 How to run (local)
 ------------------

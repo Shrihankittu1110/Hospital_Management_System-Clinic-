@@ -28,7 +28,8 @@ Quick start
 
 - `MONGO_URI` — MongoDB connection string. Default: `mongodb://127.0.0.1:27017/hospital-management`
 - `PORT` — Port the server will listen on. Default: `5000`
-- `JWT_SECRET` — Recommended secret for signing JWTs (note: `middleware/auth.js` currently uses a hard-coded secret string; replace it with `process.env.JWT_SECRET` for production).
+- `JWT_SECRET` — Secret for signing JWTs. The backend will refuse to start without it.
+- `CORS_ORIGIN` — Allowed frontend origin, or a comma-separated list of origins.
 
 4. Start the server:
 
@@ -69,7 +70,6 @@ Project structure (important files)
 Notes and next steps
 --------------------
 
-- Consider replacing the hard-coded JWT secret in `middleware/auth.js` with `process.env.JWT_SECRET`.
 - Add npm scripts (e.g., `start`, `dev`) to `package.json` for nicer developer experience.
 - Add tests and API documentation (Postman collection or OpenAPI spec) if you plan to extend the project.
 

@@ -1,4 +1,8 @@
-const rawApiBaseUrl = (process.env.REACT_APP_API_URL || 'http://localhost:5000/api').trim();
+const rawApiBaseUrl = (
+  process.env.REACT_APP_API_BASE_URL ||
+  process.env.REACT_APP_API_URL ||
+  'http://localhost:5000'
+).trim();
 
 const normalizeApiBaseUrl = (value) => {
   const sanitized = value.replace(/\/+$/, '').replace(/\/(login|signup)$/i, '');

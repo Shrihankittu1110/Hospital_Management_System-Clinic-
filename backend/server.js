@@ -9,11 +9,28 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const DEFAULT_MONGO_URI = 'mongodb://127.0.0.1:27017/hospital-management';
 const MONGO_URI = process.env.MONGO_URI || DEFAULT_MONGO_URI;
+const DEFAULT_ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'https://hospital-management-system-clinic-4.vercel.app',
+];
+const configuredOrigins = [process.env.CORS_ORIGIN, process.env.FRONTEND_URL]
+  .filter(Boolean)
+  .flatMap((value) => value.split(','))
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const allowedOrigins = configuredOrigins.length > 0 ? configuredOrigins : DEFAULT_ALLOWED_ORIGINS;
 
 // Middleware
 app.use(
   cors({
-    origin: "https://hospital-management-system-clinic-4.vercel.app",
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     credentials: true,
   })
 );

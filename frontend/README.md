@@ -39,6 +39,7 @@ REACT_APP_API_BASE_URL=https://api.example.com
 ```
 
 Then reference `process.env.REACT_APP_API_BASE_URL` from a small API helper module.
+The app also accepts `REACT_APP_API_URL` as a legacy fallback.
 
 ## Available Scripts
 

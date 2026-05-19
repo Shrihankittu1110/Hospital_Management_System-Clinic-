@@ -3,6 +3,8 @@ import { Calendar, Clock, FileText, User, Users, ChevronDown, LayoutDashboard, U
 import { useNavigate } from 'react-router-dom';
 import MessagePopup from './MessagePopup';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
 const Button = ({ children, variant = 'primary', className = '', ...props }) => (
   <button
     className={`inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
@@ -145,7 +147,7 @@ export default function PatientDashboard() {
         navigate('/login');
         return;
       }
-      const response = await fetch('http://localhost:5000/api/patient/profile', {
+      const response = await fetch(`${API_BASE_URL}/patient/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -170,7 +172,7 @@ export default function PatientDashboard() {
         navigate('/login');
         return;
       }
-      const response = await fetch('http://localhost:5000/api/doctor/all', {
+      const response = await fetch(`${API_BASE_URL}/doctor/all`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -190,7 +192,7 @@ export default function PatientDashboard() {
     if (!doctorId || !date) return;
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/patient/available-slots?doctorId=${doctorId}&date=${date}`, {
+      const response = await fetch(`${API_BASE_URL}/patient/available-slots?doctorId=${doctorId}&date=${date}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -213,7 +215,7 @@ export default function PatientDashboard() {
         navigate('/login');
         return;
       }
-      const response = await fetch('http://localhost:5000/api/patient/appointments', {
+      const response = await fetch(`${API_BASE_URL}/patient/appointments`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -236,7 +238,7 @@ export default function PatientDashboard() {
         navigate('/login');
         return;
       }
-      const response = await fetch('http://localhost:5000/api/patient/care-team', {
+      const response = await fetch(`${API_BASE_URL}/patient/care-team`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -259,7 +261,7 @@ export default function PatientDashboard() {
         navigate('/login');
         return;
       }
-      const response = await fetch('http://localhost:5000/api/patient/prescriptions', {
+      const response = await fetch(`${API_BASE_URL}/patient/prescriptions`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -282,7 +284,7 @@ export default function PatientDashboard() {
         navigate('/login');
         return;
       }
-      const response = await fetch('http://localhost:5000/api/patient/history', {
+      const response = await fetch(`${API_BASE_URL}/patient/history`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -305,7 +307,7 @@ export default function PatientDashboard() {
         navigate('/login');
         return;
       }
-      const response = await fetch('http://localhost:5000/api/bills/patient/my-bills', {
+      const response = await fetch(`${API_BASE_URL}/bills/patient/my-bills`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -463,7 +465,7 @@ export default function PatientDashboard() {
     const handleSave = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/patient/profile', {
+        const response = await fetch(`${API_BASE_URL}/patient/profile`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -619,7 +621,7 @@ export default function PatientDashboard() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/patient/appointments/${cancelConfirm.appointmentId}`, {
+      const response = await fetch(`${API_BASE_URL}/patient/appointments/${cancelConfirm.appointmentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -804,7 +806,7 @@ export default function PatientDashboard() {
         return;
       }
       try {
-        const response = await fetch(`http://localhost:5000/api/doctor/${doctorId}/availability`);
+        const response = await fetch(`${API_BASE_URL}/doctor/${doctorId}/availability`);
         if (response.ok) {
           const availability = await response.json();
           setDoctorAvailability(availability);
@@ -856,7 +858,7 @@ export default function PatientDashboard() {
       
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/patient/book-appointment', {
+        const response = await fetch(`${API_BASE_URL}/patient/book-appointment`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

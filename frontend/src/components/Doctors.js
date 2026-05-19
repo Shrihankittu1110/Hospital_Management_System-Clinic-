@@ -4,6 +4,8 @@ import { Calendar, Clock, FileText, User, Users, ChevronDown, Home, UserCircle, 
 import { useNavigate } from 'react-router-dom';
 import MessagePopup from './MessagePopup';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
 const Button = ({ children, variant = 'primary', className = '', ...props }) => (
   <button
     className={`inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
@@ -153,7 +155,7 @@ export default function DoctorDashboard() {
     if (!patientId || !date) return;
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/doctor/available-slots?patientId=${patientId}&date=${date}`, {
+      const response = await fetch(`${API_BASE_URL}/doctor/available-slots?patientId=${patientId}&date=${date}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -175,7 +177,7 @@ export default function DoctorDashboard() {
     if (!patientId) return;
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/doctor/prescriptions/${patientId}`, {
+      const response = await fetch(`${API_BASE_URL}/doctor/prescriptions/${patientId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -209,7 +211,7 @@ export default function DoctorDashboard() {
         navigate('/login');
         return;
       }
-      const response = await fetch('http://localhost:5000/api/doctor/profile', {
+      const response = await fetch(`${API_BASE_URL}/doctor/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -232,7 +234,7 @@ export default function DoctorDashboard() {
       if (!token) {
         return;
       }
-      const response = await fetch('http://localhost:5000/api/doctor/availability', {
+      const response = await fetch(`${API_BASE_URL}/doctor/availability`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -252,7 +254,7 @@ export default function DoctorDashboard() {
   const saveAvailability = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/doctor/availability', {
+      const response = await fetch(`${API_BASE_URL}/doctor/availability`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -286,7 +288,7 @@ export default function DoctorDashboard() {
         navigate('/login');
         return;
       }
-      const response = await fetch('http://localhost:5000/api/doctor/patients-with-appointments', {
+      const response = await fetch(`${API_BASE_URL}/doctor/patients-with-appointments`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -309,7 +311,7 @@ export default function DoctorDashboard() {
         navigate('/login');
         return;
       }
-      const response = await fetch('http://localhost:5000/api/doctor/appointments', {
+      const response = await fetch(`${API_BASE_URL}/doctor/appointments`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -344,7 +346,7 @@ export default function DoctorDashboard() {
         navigate('/login');
         return;
       }
-      const response = await fetch('http://localhost:5000/api/doctor/history', {
+      const response = await fetch(`${API_BASE_URL}/doctor/history`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -367,7 +369,7 @@ export default function DoctorDashboard() {
         navigate('/login');
         return;
       }
-      const response = await fetch('http://localhost:5000/api/bills/doctor/bills', {
+      const response = await fetch(`${API_BASE_URL}/bills/doctor/bills`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -396,7 +398,7 @@ export default function DoctorDashboard() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/bills/generate', {
+      const response = await fetch(`${API_BASE_URL}/bills/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -591,7 +593,7 @@ export default function DoctorDashboard() {
     const handleSave = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5000/api/doctor/profile', {
+        const response = await fetch(`${API_BASE_URL}/doctor/profile`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -773,7 +775,7 @@ export default function DoctorDashboard() {
     setBillDeleteConfirm(null);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/bills/${billId}`, {
+      const response = await fetch(`${API_BASE_URL}/bills/${billId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -818,7 +820,7 @@ export default function DoctorDashboard() {
     const handlePaymentStatusUpdate = async (billId, newStatus) => {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`http://localhost:5000/api/bills/${billId}/payment-status`, {
+        const response = await fetch(`${API_BASE_URL}/bills/${billId}/payment-status`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -1313,7 +1315,7 @@ export default function DoctorDashboard() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/doctor/appointments/${cancelConfirm.appointmentId}`, {
+      const response = await fetch(`${API_BASE_URL}/doctor/appointments/${cancelConfirm.appointmentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1352,7 +1354,7 @@ export default function DoctorDashboard() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/doctor/appointments/${completeConfirm.appointmentId}/status`, {
+      const response = await fetch(`${API_BASE_URL}/doctor/appointments/${completeConfirm.appointmentId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1386,7 +1388,7 @@ export default function DoctorDashboard() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/doctor/prescriptions/${deleteConfirm.prescriptionId}`, {
+      const response = await fetch(`${API_BASE_URL}/doctor/prescriptions/${deleteConfirm.prescriptionId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -1459,8 +1461,8 @@ export default function DoctorDashboard() {
         try {
           const token = localStorage.getItem('token');
           const url = appointmentData.prescriptionId
-            ? `http://localhost:5000/api/doctor/prescriptions/${appointmentData.prescriptionId}`
-            : 'http://localhost:5000/api/doctor/prescribe-medication';
+            ? `${API_BASE_URL}/doctor/prescriptions/${appointmentData.prescriptionId}`
+            : `${API_BASE_URL}/doctor/prescribe-medication`;
           const method = appointmentData.prescriptionId ? 'PUT' : 'POST';
           const response = await fetch(url, {
             method,
@@ -1506,7 +1508,7 @@ export default function DoctorDashboard() {
       } else if (selectedAction === 'schedule-appointment') {
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch('http://localhost:5000/api/doctor/schedule-appointment', {
+          const response = await fetch(`${API_BASE_URL}/doctor/schedule-appointment`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

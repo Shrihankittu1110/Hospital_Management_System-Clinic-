@@ -3,6 +3,8 @@ import { Calendar, FileText, Users, ChevronDown, Home, UserCircle, Eye, EyeOff, 
 import { useNavigate } from 'react-router-dom';
 import MessagePopup from './MessagePopup';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
 const Button = ({ children, variant = 'primary', className = '', ...props }) => (
   <button
     className={`inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
@@ -144,7 +146,7 @@ export default function AdminDashboard() {
         // Handle not authenticated case
         return;
       }
-      const response = await fetch('http://localhost:5000/api/admin/profile', {
+      const response = await fetch(`${API_BASE_URL}/admin/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -168,7 +170,7 @@ export default function AdminDashboard() {
       if (!token) {
         return;
       }
-      const response = await fetch('http://localhost:5000/api/admin/total-doctors', {
+      const response = await fetch(`${API_BASE_URL}/admin/total-doctors`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -190,7 +192,7 @@ export default function AdminDashboard() {
       if (!token) {
         return;
       }
-      const response = await fetch('http://localhost:5000/api/admin/total-patients', {
+      const response = await fetch(`${API_BASE_URL}/admin/total-patients`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -212,7 +214,7 @@ export default function AdminDashboard() {
       if (!token) {
         return;
       }
-      const response = await fetch('http://localhost:5000/api/admin/doctor-overview', {
+      const response = await fetch(`${API_BASE_URL}/admin/doctor-overview`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -234,7 +236,7 @@ export default function AdminDashboard() {
       if (!token) {
         return;
       }
-      const response = await fetch('http://localhost:5000/api/admin/patient-overview', {
+      const response = await fetch(`${API_BASE_URL}/admin/patient-overview`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -256,7 +258,7 @@ export default function AdminDashboard() {
       if (!token) {
         return;
       }
-      const response = await fetch('http://localhost:5000/api/admin/appointments', {
+      const response = await fetch(`${API_BASE_URL}/admin/appointments`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -285,7 +287,7 @@ export default function AdminDashboard() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/appointments/${completeConfirm.appointmentId}/status`, {
+      const response = await fetch(`${API_BASE_URL}/admin/appointments/${completeConfirm.appointmentId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -326,7 +328,7 @@ export default function AdminDashboard() {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/admin/appointments/${cancelConfirm.appointmentId}/status`, {
+      const response = await fetch(`${API_BASE_URL}/admin/appointments/${cancelConfirm.appointmentId}/status`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -517,7 +519,7 @@ export default function AdminDashboard() {
           navigate('/login');
           return;
         }
-        const response = await fetch('http://localhost:5000/api/admin/profile', {
+        const response = await fetch(`${API_BASE_URL}/admin/profile`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -613,7 +615,7 @@ export default function AdminDashboard() {
           navigate('/login');
           return;
         }
-        const response = await fetch('http://localhost:5000/api/admin/add-doctor', {
+        const response = await fetch(`${API_BASE_URL}/admin/add-doctor`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -753,7 +755,7 @@ export default function AdminDashboard() {
           navigate('/login');
           return;
         }
-        const response = await fetch('http://localhost:5000/api/admin/add-admin', {
+        const response = await fetch(`${API_BASE_URL}/admin/add-admin`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

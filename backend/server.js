@@ -49,13 +49,7 @@ app.use(createRateLimiter({
 }));
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      return callback(new ApiError(403, `CORS blocked for origin: ${origin}`));
-    },
+    origin: "https://hospital-management-system-clinic.vercel.app",
     credentials: true,
   })
 );

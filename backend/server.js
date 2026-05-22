@@ -34,6 +34,7 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'http://127.0.0.1:4173',
   'http://localhost:3004',
   'http://127.0.0.1:3004',
+  'https://hospital-management-system-clinic.vercel.app',
 ];
 const configuredOrigins = [process.env.CORS_ORIGIN, process.env.FRONTEND_URL]
   .filter(Boolean)

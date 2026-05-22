@@ -49,7 +49,10 @@ app.use(createRateLimiter({
 }));
 app.use(
   cors({
-    origin: "https://hospital-management-system-clinic.vercel.app",
+    origin: [
+      "https://hospital-management-system-clinic.vercel.app",
+      "https://hospital-management-system-clinic-a9lab6p2q.vercel.app",
+    ],
     credentials: true,
   })
 );

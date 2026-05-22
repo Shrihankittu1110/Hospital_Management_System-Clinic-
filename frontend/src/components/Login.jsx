@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import MessagePopup from './MessagePopup';
 import { API_BASE_URL } from '../utils/apiBase';
 
-const Login = ({ onClose }) => {
+const Login = ({ onClose, onSwitchToSignup }) => {
 	const navigate = useNavigate();
 	const [selectedRole, setSelectedRole] = useState('patient');
 	const [email, setEmail] = useState('');
@@ -153,7 +153,13 @@ const Login = ({ onClose }) => {
 					<p className="text-sm text-gray-600">
 						Don't have an account?{' '}
 						<button 
-							onClick={() => onClose ? onClose() : navigate('/signup')} 
+							onClick={() => {
+								if (onSwitchToSignup) {
+									onSwitchToSignup();
+									return;
+								}
+								navigate('/signup');
+							}} 
 							className="text-blue-600 font-semibold hover:underline"
 						>
 							Sign up

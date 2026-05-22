@@ -4,7 +4,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import MessagePopup from './MessagePopup';
 import { API_BASE_URL } from '../utils/apiBase';
 
-const SignUp = ({ onClose }) => {
+const SignUp = ({ onClose, onSwitchToLogin }) => {
 	const navigate = useNavigate();
 	const [formData, setFormData] = useState({
 		firstName: "",
@@ -61,8 +61,8 @@ const SignUp = ({ onClose }) => {
 						variant: 'success',
 						confirmLabel: 'Go to Login',
 						onConfirm: () => {
-							if (onClose) {
-								onClose();
+							if (onSwitchToLogin) {
+								onSwitchToLogin();
 							} else {
 								navigate('/login');
 							}
@@ -193,7 +193,16 @@ const SignUp = ({ onClose }) => {
 				<div className="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-t border-blue-100 mt-auto">
 					<p className="text-sm text-blue-600 text-center">
 						Already have an account?{" "}
-						<button onClick={() => onClose()} className="text-blue-600 font-semibold hover:underline">
+						<button
+							onClick={() => {
+								if (onSwitchToLogin) {
+									onSwitchToLogin();
+									return;
+								}
+								navigate('/login');
+							}}
+							className="text-blue-600 font-semibold hover:underline"
+						>
 							Log in
 						</button>
 					</p>

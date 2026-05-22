@@ -113,7 +113,13 @@ const Home = () => {
 							<X size={24} className="text-white" />
 						</button>
 						<div className="overflow-y-auto max-h-[90vh]">
-							<Login onClose={() => setShowLoginModal(false)} />
+							<Login
+								onClose={() => setShowLoginModal(false)}
+								onSwitchToSignup={() => {
+									setShowLoginModal(false);
+									setShowSignupModal(true);
+								}}
+							/>
 						</div>
 					</div>
 				</div>
@@ -134,7 +140,13 @@ const Home = () => {
 							<X size={24} className="text-white" />
 						</button>
 						<div className="overflow-y-auto max-h-[90vh]">
-							<SignUp onClose={() => setShowSignupModal(false)} />
+							<SignUp
+								onClose={() => setShowSignupModal(false)}
+								onSwitchToLogin={() => {
+									setShowSignupModal(false);
+									setShowLoginModal(true);
+								}}
+							/>
 						</div>
 					</div>
 				</div>

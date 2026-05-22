@@ -1,21 +1,19 @@
 const express = require('express');
 const User = require('../models/User');
+const { asyncHandler, ApiError } = require('../utils/errors');
 
 const router = express.Router();
 
-router.post('/', async (req, res) => {
-  const { firstName, lastName, email, password, role } = req.body;
+router.post('/', asyncHandler(async (req, res) => {
+  const { firstName, lastName, email, password } = req.body;
 
-  try {
-    const user = new User({ firstName, lastName, email, password, role });
-    await user.save();
-    res.status(201).send({ message: 'User registered successfully' });
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.status(400).send({ error: 'Email already exists' });
-    }
-    res.status(400).send({ error: error.message });
+  if (!firstName || !lastName || !email || !password) {
+    throw new ApiError(400, 'First name, last name, email, and password are required');
   }
-});
+
+  const user = new User({ firstName, lastName, email, password, role: 'patient' });
+  await user.save();
+  res.status(201).send({ message: 'User registered successfully' });
+}));
 
 module.exports = router;

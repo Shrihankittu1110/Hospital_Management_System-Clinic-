@@ -1,24 +1,23 @@
 const express = require('express');
 const Doctor = require('../models/Doctor');
 const auth = require('../middleware/auth');
+const { requireRole } = require('../middleware/auth');
 const Appointment = require('../models/Appointment');
 const User = require('../models/User');
 const Prescription = require('../models/Prescription');
 const Bill = require('../models/Bill');
+const {
+  DEFAULT_AVAILABILITY,
+  getDayRange,
+  getWeekday,
+  generateTimeSlots,
+  parseDisplayTime,
+} = require('../utils/appointments');
 
 const router = express.Router();
+const doctorOnly = [auth, requireRole('doctor')];
 
-const getDayRange = (dateValue) => {
-  const start = new Date(dateValue);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return { start, end };
-};
-
-// auth middleware imported above
-
-router.get('/profile', auth, async (req, res) => {
+router.get('/profile', doctorOnly, async (req, res) => {
   try {
     const doctor = await Doctor.findById(req.user.id).select('-password');
     if (!doctor) {
@@ -31,7 +30,7 @@ router.get('/profile', auth, async (req, res) => {
   }
 });
 
-router.put('/profile', auth, async (req, res) => {
+router.put('/profile', doctorOnly, async (req, res) => {
   try {
     const { firstName, lastName, email, specialty, licenseNumber, phoneNumber } = req.body;
     const doctor = await Doctor.findById(req.user.id);
@@ -71,33 +70,28 @@ router.get('/:doctorId/availability', async (req, res) => {
     if (!doctor) {
       return res.status(404).send({ error: 'Doctor not found' });
     }
-    res.json(doctor.availability || {
-      monday: { startTime: '09:00', endTime: '17:00', isAvailable: true },
-      tuesday: { startTime: '09:00', endTime: '17:00', isAvailable: true },
-      wednesday: { startTime: '09:00', endTime: '17:00', isAvailable: true },
-      thursday: { startTime: '09:00', endTime: '17:00', isAvailable: true },
-      friday: { startTime: '09:00', endTime: '17:00', isAvailable: true },
-      saturday: { startTime: '10:00', endTime: '14:00', isAvailable: false },
-      sunday: { startTime: '00:00', endTime: '00:00', isAvailable: false }
-    });
+    res.json(doctor.availability || DEFAULT_AVAILABILITY);
   } catch (error) {
     require('../utils/logger').error(error);
     res.status(500).send({ error: 'Server error' });
   }
 });
 
-router.get('/patients-with-appointments', auth, async (req, res) => {
+router.get('/patients-with-appointments', doctorOnly, async (req, res) => {
   try {
     const doctorId = req.user.id;
     const appointments = await Appointment.find({ doctorId }).sort({ date: 1 });
     const patientIds = [...new Set(appointments.map(app => app.patientId.toString()))];
+    const now = new Date();
 
     const patients = await User.find({ _id: { $in: patientIds }, role: 'patient' });
 
     const patientsWithAppointments = patients.map(patient => {
       const patientAppointments = appointments.filter(app => app.patientId.toString() === patient._id.toString());
-      const lastVisit = patientAppointments.find(app => new Date(app.date) < new Date());
-      const nextAppointment = patientAppointments.find(app => new Date(app.date) >= new Date());
+      const pastAppointments = patientAppointments.filter(app => new Date(app.date) < now);
+      const upcomingAppointments = patientAppointments.filter(app => new Date(app.date) >= now);
+      const lastVisit = pastAppointments[pastAppointments.length - 1] || null;
+      const nextAppointment = upcomingAppointments[0] || null;
 
       return {
         ...patient.toObject(),
@@ -113,7 +107,7 @@ router.get('/patients-with-appointments', auth, async (req, res) => {
   }
 });
 
-router.get('/available-slots', auth, async (req, res) => {
+router.get('/available-slots', doctorOnly, async (req, res) => {
   try {
     const { patientId, date } = req.query;
     const doctorId = req.user.id; // Assuming the doctor is making the request
@@ -130,38 +124,13 @@ router.get('/available-slots', auth, async (req, res) => {
       return res.status(404).send({ error: 'Doctor not found' });
     }
 
-    // Get the day of the week from the date
-    const appointmentDate = new Date(date);
-    const dayOfWeek = appointmentDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-    
-    // Helper function to generate time slots from 24-hour format to 12-hour format
-    const generateTimeSlots = (startTime, endTime) => {
-      const slots = [];
-      const [startHour, startMin] = startTime.split(':').map(Number);
-      const [endHour, endMin] = endTime.split(':').map(Number);
-      
-      let currentHour = startHour;
-      let currentMin = startMin;
-      
-      while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
-        const hour12 = currentHour % 12 || 12;
-        const period = currentHour >= 12 ? 'PM' : 'AM';
-        const slot = `${hour12}:${String(currentMin).padStart(2, '0')} ${period}`;
-        slots.push(slot);
-        
-        currentMin += 60; // Add 1 hour
-        if (currentMin >= 60) {
-          currentHour += Math.floor(currentMin / 60);
-          currentMin = currentMin % 60;
-        }
-      }
-      return slots;
-    };
+    const dayOfWeek = getWeekday(date);
 
     // Fetch booked appointments for the given doctor and date
     const bookedAppointments = await Appointment.find({
       doctorId,
-      date: { $gte: start, $lt: end }
+      date: { $gte: start, $lt: end },
+      status: 'scheduled'
     });
     const bookedTimes = bookedAppointments.map(app => app.time);
 
@@ -192,7 +161,7 @@ router.get('/available-slots', auth, async (req, res) => {
   }
 });
 
-router.post('/schedule-appointment', auth, async (req, res) => {
+router.post('/schedule-appointment', doctorOnly, async (req, res) => {
   try {
     const { patientId, date, time, reason } = req.body;
     const doctorId = req.user.id; // Assuming the doctor is making the request
@@ -201,11 +170,47 @@ router.post('/schedule-appointment', auth, async (req, res) => {
       return res.status(400).send({ error: 'All appointment fields are required' });
     }
 
+    const appointmentDate = new Date(date);
+    if (Number.isNaN(appointmentDate.getTime())) {
+      return res.status(400).send({ error: 'Invalid appointment date' });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    appointmentDate.setHours(0, 0, 0, 0);
+    if (appointmentDate < today) {
+      return res.status(400).send({ error: 'Appointment date cannot be in the past' });
+    }
+
     const { start, end } = getDayRange(date);
+    const dayOfWeek = getWeekday(date);
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).send({ error: 'Doctor not found' });
+    }
+
+    if (doctor.availability && doctor.availability[dayOfWeek]) {
+      const doctorAvailability = doctor.availability[dayOfWeek];
+
+      if (!doctorAvailability.isAvailable) {
+        return res.status(400).send({ error: 'You are not available on this day' });
+      }
+
+      const slotTimeStr = parseDisplayTime(time);
+      if (!slotTimeStr) {
+        return res.status(400).send({ error: 'Invalid time format' });
+      }
+
+      if (slotTimeStr < doctorAvailability.startTime || slotTimeStr >= doctorAvailability.endTime) {
+        return res.status(400).send({ error: 'Selected time is outside your availability' });
+      }
+    }
+
     const existingAppointment = await Appointment.findOne({
       doctorId,
       date: { $gte: start, $lt: end },
-      time
+      time,
+      status: 'scheduled'
     });
 
     if (existingAppointment) {
@@ -228,7 +233,7 @@ router.post('/schedule-appointment', auth, async (req, res) => {
   }
 });
 
-router.post('/prescribe-medication', auth, async (req, res) => {
+router.post('/prescribe-medication', doctorOnly, async (req, res) => {
   try {
     const { patientId, medication, dosage, frequency } = req.body;
     const doctorId = req.user.id;
@@ -251,7 +256,7 @@ router.post('/prescribe-medication', auth, async (req, res) => {
 });
 
 // Get all prescriptions
-router.get('/prescriptions', auth, async (req, res) => {
+router.get('/prescriptions', doctorOnly, async (req, res) => {
   try {
     const prescriptions = await Prescription.find({ doctorId: req.user.id });
     res.json(prescriptions);
@@ -262,7 +267,7 @@ router.get('/prescriptions', auth, async (req, res) => {
 });
 
 // Update a prescription
-router.put('/prescriptions/:id', auth, async (req, res) => {
+router.put('/prescriptions/:id', doctorOnly, async (req, res) => {
   try {
     const { medication, dosage, frequency } = req.body;
     const prescription = await Prescription.findOneAndUpdate(
@@ -280,22 +285,8 @@ router.put('/prescriptions/:id', auth, async (req, res) => {
   }
 });
 
-// Delete a prescription
-router.delete('/prescriptions/:id', auth, async (req, res) => {
-  try {
-    const prescription = await Prescription.findOneAndDelete({ _id: req.params.id, doctorId: req.user.id });
-    if (!prescription) {
-      return res.status(404).send({ error: 'Prescription not found' });
-    }
-    res.json({ message: 'Prescription deleted successfully' });
-  } catch (error) {
-    require('../utils/logger').error('Error deleting prescription:', error);
-    res.status(500).send({ error: 'Server error' });
-  }
-});
-
 // Get all prescriptions by patient ID
-router.get('/prescriptions/:patientId', auth, async (req, res) => {
+router.get('/prescriptions/:patientId', doctorOnly, async (req, res) => {
   try {
     const prescriptions = await Prescription.find({ 
       doctorId: req.user.id,
@@ -308,7 +299,21 @@ router.get('/prescriptions/:patientId', auth, async (req, res) => {
   }
 });
 
-router.delete('/appointments/:appointmentId', auth, async (req, res) => {
+// Delete a prescription
+router.delete('/prescriptions/:id', doctorOnly, async (req, res) => {
+  try {
+    const prescription = await Prescription.findOneAndDelete({ _id: req.params.id, doctorId: req.user.id });
+    if (!prescription) {
+      return res.status(404).send({ error: 'Prescription not found' });
+    }
+    res.json({ message: 'Prescription deleted successfully' });
+  } catch (error) {
+    require('../utils/logger').error('Error deleting prescription:', error);
+    res.status(500).send({ error: 'Server error' });
+  }
+});
+
+router.delete('/appointments/:appointmentId', doctorOnly, async (req, res) => {
   try {
     const { appointmentId } = req.params;
     const appointment = await Appointment.findById(appointmentId);
@@ -329,7 +334,7 @@ router.delete('/appointments/:appointmentId', auth, async (req, res) => {
   }
 });
 
-router.get('/availability', auth, async (req, res) => {
+router.get('/availability', doctorOnly, async (req, res) => {
   try {
     const doctor = await Doctor.findById(req.user.id).select('availability');
     if (!doctor) {
@@ -342,12 +347,39 @@ router.get('/availability', auth, async (req, res) => {
   }
 });
 
-router.put('/availability', auth, async (req, res) => {
+router.put('/availability', doctorOnly, async (req, res) => {
   try {
     const { availability } = req.body;
+    if (!availability || typeof availability !== 'object') {
+      return res.status(400).send({ error: 'Availability is required' });
+    }
+
+    const normalizedAvailability = {};
+    for (const day of Object.keys(DEFAULT_AVAILABILITY)) {
+      const dayAvailability = {
+        ...DEFAULT_AVAILABILITY[day],
+        ...(availability[day] || {}),
+      };
+
+      const validTime = /^\d{2}:\d{2}$/;
+      if (!validTime.test(dayAvailability.startTime) || !validTime.test(dayAvailability.endTime)) {
+        return res.status(400).send({ error: `Invalid time format for ${day}` });
+      }
+
+      if (dayAvailability.isAvailable && dayAvailability.startTime >= dayAvailability.endTime) {
+        return res.status(400).send({ error: `Start time must be before end time for ${day}` });
+      }
+
+      normalizedAvailability[day] = {
+        startTime: dayAvailability.startTime,
+        endTime: dayAvailability.endTime,
+        isAvailable: Boolean(dayAvailability.isAvailable),
+      };
+    }
+
     const doctor = await Doctor.findByIdAndUpdate(
       req.user.id,
-      { availability },
+      { availability: normalizedAvailability },
       { new: true }
     ).select('availability');
     
@@ -363,7 +395,7 @@ router.put('/availability', auth, async (req, res) => {
 });
 
 // Update appointment status
-router.put('/appointments/:appointmentId/status', auth, async (req, res) => {
+router.put('/appointments/:appointmentId/status', doctorOnly, async (req, res) => {
   try {
     const { appointmentId } = req.params;
     const { status } = req.body;
@@ -419,7 +451,7 @@ router.put('/appointments/:appointmentId/status', auth, async (req, res) => {
 });
 
 // Get appointments (only active ones - scheduled)
-router.get('/appointments', auth, async (req, res) => {
+router.get('/appointments', doctorOnly, async (req, res) => {
   try {
     const doctorId = req.user.id;
     const appointments = await Appointment.find({ 
@@ -436,7 +468,7 @@ router.get('/appointments', auth, async (req, res) => {
   }
 });
 
-router.get('/history', auth, async (req, res) => {
+router.get('/history', doctorOnly, async (req, res) => {
   try {
     const doctorId = req.user.id;
 

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const BillCounter = require('./BillCounter');
 
 const billSchema = new mongoose.Schema({
   billNumber: { type: String, unique: true, required: true },
@@ -42,9 +43,13 @@ billSchema.pre('save', function(next) {
 billSchema.statics.generateBillNumber = async function() {
   const year = new Date().getFullYear();
   const month = String(new Date().getMonth() + 1).padStart(2, '0');
-  const latestBill = await this.findOne().sort({ createdAt: -1 });
-  const sequence = latestBill ? parseInt(latestBill.billNumber.split('-')[2]) + 1 : 1;
-  return `BILL-${year}${month}-${String(sequence).padStart(5, '0')}`;
+  const counter = await BillCounter.findOneAndUpdate(
+    { name: 'bill-number' },
+    { $inc: { sequence: 1 } },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
+
+  return `BILL-${year}${month}-${String(counter.sequence).padStart(5, '0')}`;
 };
 
 const Bill = mongoose.model('Bill', billSchema);

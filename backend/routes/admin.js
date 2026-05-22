@@ -4,15 +4,13 @@ const Admin = require('../models/Admin');
 const User = require('../models/User');
 const Appointment = require('../models/Appointment');
 const auth = require('../middleware/auth');
+const { requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
+router.use(auth, requireRole('admin'));
 
-router.post('/add-doctor', auth, async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).send({ error: 'Not authorized to add doctors' });
-  }
-
+router.post('/add-doctor', async (req, res) => {
   const { firstName, lastName, email, specialty, licenseNumber, phoneNumber, password } = req.body;
 
   try {
@@ -27,11 +25,7 @@ router.post('/add-doctor', auth, async (req, res) => {
   }
 });
 
-router.post('/add-admin', auth, async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).send({ error: 'Not authorized to add admins' });
-  }
-
+router.post('/add-admin', async (req, res) => {
   const { firstName, lastName, email, password } = req.body;
 
   try {
@@ -46,7 +40,7 @@ router.post('/add-admin', auth, async (req, res) => {
   }
 });
 
-router.get('/profile', auth, async (req, res) => {
+router.get('/profile', async (req, res) => {
   try {
     const admin = await Admin.findById(req.user.id).select('-password');
     if (!admin) {
@@ -59,7 +53,7 @@ router.get('/profile', auth, async (req, res) => {
   }
 });
 
-router.put('/profile', auth, async (req, res) => {
+router.put('/profile', async (req, res) => {
   try {
     const { firstName, lastName, email } = req.body;
     const admin = await Admin.findById(req.user.id);
@@ -79,7 +73,7 @@ router.put('/profile', auth, async (req, res) => {
   }
 });
 
-router.get('/total-doctors', auth, async (req, res) => {
+router.get('/total-doctors', async (req, res) => {
   try {
     const totalDoctors = await Doctor.countDocuments();
     res.json({ totalDoctors });
@@ -89,7 +83,7 @@ router.get('/total-doctors', auth, async (req, res) => {
   }
 });
 
-router.get('/total-patients', auth, async (req, res) => {
+router.get('/total-patients', async (req, res) => {
   try {
     const totalPatients = await User.countDocuments({ role: 'patient' });
     res.json({ totalPatients });
@@ -99,7 +93,7 @@ router.get('/total-patients', auth, async (req, res) => {
   }
 });
 
-router.get('/doctor-overview', auth, async (req, res) => {
+router.get('/doctor-overview', async (req, res) => {
   try {
     const doctors = await Doctor.find().select('firstName lastName specialty');
     const doctorOverview = await Promise.all(doctors.map(async (doctor) => {
@@ -117,7 +111,7 @@ router.get('/doctor-overview', auth, async (req, res) => {
   }
 });
 
-router.get('/patient-overview', auth, async (req, res) => {
+router.get('/patient-overview', async (req, res) => {
   try {
     const patients = await User.find({ role: 'patient' }).select('firstName lastName');
     const patientOverview = await Promise.all(patients.map(async (patient) => {
@@ -135,12 +129,8 @@ router.get('/patient-overview', auth, async (req, res) => {
 });
 
 // Get all appointments (admin only)
-router.get('/appointments', auth, async (req, res) => {
+router.get('/appointments', async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).send({ error: 'Not authorized' });
-    }
-
     const appointments = await Appointment.find({ status: 'scheduled' })
       .populate('patientId', 'firstName lastName')
       .populate('doctorId', 'firstName lastName')
@@ -154,12 +144,8 @@ router.get('/appointments', auth, async (req, res) => {
 });
 
 // Update appointment status (admin only)
-router.put('/appointments/:appointmentId/status', auth, async (req, res) => {
+router.put('/appointments/:appointmentId/status', async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).send({ error: 'Not authorized' });
-    }
-
     const { appointmentId } = req.params;
     const { status } = req.body;
 

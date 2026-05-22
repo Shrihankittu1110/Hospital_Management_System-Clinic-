@@ -1,15 +1,15 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import './App.css';
-import Home from './components/Home';
-import Login from './components/Login';
-import SignUp from './components/SignUp';
-import Patient from './components/Patient';
-import Doctor from './components/Doctors';
-import Admin from './components/Admins';
-import PatientManagement from './components/PatientManagement';
-import DoctorManagement from './components/DoctorManagement';
-import AppointmentManagement from './components/AppointmentManagement';
+import Home from './components/Home.jsx';
+import Login from './components/Login.jsx';
+import SignUp from './components/SignUp.jsx';
+import Patient from './components/Patient.jsx';
+import Doctor from './components/Doctors.jsx';
+import Admin from './components/Admins.jsx';
+import PatientManagement from './components/PatientManagement.jsx';
+import DoctorManagement from './components/DoctorManagement.jsx';
+import AppointmentManagement from './components/AppointmentManagement.jsx';
 
 function App() {
   return (

@@ -1,39 +1,44 @@
 const express = require('express');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
-const Admin = require('../models/Admin'); // Add this line
+const Admin = require('../models/Admin');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { asyncHandler, ApiError } = require('../utils/errors');
 
 const router = express.Router();
 
-router.post('/', async (req, res) => {
+router.post('/', asyncHandler(async (req, res) => {
   const { email, password, role } = req.body;
 
-  try {
-    let user;
-    if (role === 'doctor') {
-      user = await Doctor.findOne({ email });
-    } else if (role === 'admin') {
-      user = await Admin.findOne({ email });
-    } else {
-      user = await User.findOne({ email, role });
-    }
-    
-    if (!user) {
-      return res.status(400).send({ error: 'Invalid email or role' });
-    }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).send({ error: 'Invalid password' });
-    }
-
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
-    res.send({ token, role: user.role });
-  } catch (error) {
-    res.status(500).send({ error: 'Server error' });
+  if (!email || !password || !role) {
+    throw new ApiError(400, 'Email, password, and role are required');
   }
-});
+
+  if (!['patient', 'doctor', 'admin'].includes(role)) {
+    throw new ApiError(400, 'Invalid role');
+  }
+
+  let user;
+  if (role === 'doctor') {
+    user = await Doctor.findOne({ email });
+  } else if (role === 'admin') {
+    user = await Admin.findOne({ email });
+  } else {
+    user = await User.findOne({ email, role });
+  }
+
+  if (!user) {
+    throw new ApiError(400, 'Invalid email, password, or role');
+  }
+
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    throw new ApiError(400, 'Invalid email, password, or role');
+  }
+
+  const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
+  res.send({ token, role: user.role });
+}));
 
 module.exports = router;

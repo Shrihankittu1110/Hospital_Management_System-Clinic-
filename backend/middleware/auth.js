@@ -16,4 +16,13 @@ const auth = (req, res, next) => {
   }
 };
 
+const requireRole = (...roles) => (req, res, next) => {
+  if (!req.user || !roles.includes(req.user.role)) {
+    return res.status(403).send({ error: 'Not authorized' });
+  }
+
+  next();
+};
+
 module.exports = auth;
+module.exports.requireRole = requireRole;

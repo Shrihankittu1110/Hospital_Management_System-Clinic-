@@ -1,10 +1,15 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const Bill = require('../models/Bill');
 const Appointment = require('../models/Appointment');
 const Prescription = require('../models/Prescription');
 const auth = require('../middleware/auth');
+const { requireRole } = require('../middleware/auth');
 
 const router = express.Router();
+const doctorOnly = [auth, requireRole('doctor')];
+const patientOnly = [auth, requireRole('patient')];
+const authenticated = [auth, requireRole('patient', 'doctor', 'admin')];
 
 const normalizeBillPaymentStatus = (bill, paymentStatus) => {
   bill.paymentStatus = paymentStatus;
@@ -22,17 +27,10 @@ const normalizeBillPaymentStatus = (bill, paymentStatus) => {
 };
 
 // Generate bill for a completed appointment (Only doctors based on prescription)
-router.post('/generate', auth, async (req, res) => {
+router.post('/generate', doctorOnly, async (req, res) => {
   try {
     const { prescriptionId, appointmentId, consultationFee } = req.body;
     const userId = req.user.id;
-    const userRole = req.user.role;
-
-    // Only doctors can generate bills
-    if (userRole !== 'doctor') {
-      return res.status(403).send({ error: 'Only doctors can generate bills' });
-    }
-
     if (!appointmentId) {
       return res.status(400).send({ error: 'Appointment ID is required' });
     }
@@ -119,13 +117,9 @@ router.post('/generate', auth, async (req, res) => {
 });
 
 // Get all bills for a doctor
-router.get('/doctor/bills', auth, async (req, res) => {
+router.get('/doctor/bills', doctorOnly, async (req, res) => {
   try {
     const doctorId = req.user.id;
-
-    if (req.user.role !== 'doctor') {
-      return res.status(403).send({ error: 'Only doctors can view their bills' });
-    }
 
     const bills = await Bill.find({ doctorId })
       .populate('patientId', 'firstName lastName email')
@@ -140,7 +134,7 @@ router.get('/doctor/bills', auth, async (req, res) => {
 });
 
 // Get specific bill details
-router.get('/:billId', auth, async (req, res) => {
+router.get('/:billId', authenticated, async (req, res) => {
   try {
     const { billId } = req.params;
     const userId = req.user.id;
@@ -171,7 +165,7 @@ router.get('/:billId', auth, async (req, res) => {
 });
 
 // Update bill payment status
-router.put('/:billId/payment-status', auth, async (req, res) => {
+router.put('/:billId/payment-status', authenticated, async (req, res) => {
   try {
     const { billId } = req.params;
     const { paymentStatus } = req.body;
@@ -220,25 +214,27 @@ router.put('/:billId/payment-status', auth, async (req, res) => {
 });
 
 // Get bill statistics for doctor (revenue overview)
-router.get('/doctor/stats/overview', auth, async (req, res) => {
+router.get('/doctor/stats/overview', doctorOnly, async (req, res) => {
   try {
     const doctorId = req.user.id;
-
-    if (req.user.role !== 'doctor') {
-      return res.status(403).send({ error: 'Only doctors can view their statistics' });
-    }
 
     const totalBills = await Bill.countDocuments({ doctorId });
     const paidBills = await Bill.countDocuments({ doctorId, paymentStatus: 'paid' });
     const unpaidBills = await Bill.countDocuments({ doctorId, paymentStatus: 'unpaid' });
 
+    if (!mongoose.Types.ObjectId.isValid(doctorId)) {
+      return res.status(400).send({ error: 'Invalid doctor ID' });
+    }
+
+    const doctorObjectId = new mongoose.Types.ObjectId(doctorId);
+
     const totalRevenue = await Bill.aggregate([
-      { $match: { doctorId: require('mongoose').Types.ObjectId(doctorId), paymentStatus: 'paid' } },
+      { $match: { doctorId: doctorObjectId, paymentStatus: 'paid' } },
       { $group: { _id: null, totalAmount: { $sum: '$totalAmount' } } }
     ]);
 
     const pendingRevenue = await Bill.aggregate([
-      { $match: { doctorId: require('mongoose').Types.ObjectId(doctorId), paymentStatus: 'unpaid' } },
+      { $match: { doctorId: doctorObjectId, paymentStatus: 'unpaid' } },
       { $group: { _id: null, totalAmount: { $sum: '$totalAmount' } } }
     ]);
 
@@ -256,18 +252,11 @@ router.get('/doctor/stats/overview', auth, async (req, res) => {
 });
 
 // Patient pays bill with UPI ID
-router.post('/:billId/pay-with-upi', auth, async (req, res) => {
+router.post('/:billId/pay-with-upi', patientOnly, async (req, res) => {
   try {
     const { billId } = req.params;
     const { upiId, transactionId } = req.body;
     const userId = req.user.id;
-    const userRole = req.user.role;
-
-    // Only patients can pay bills
-    if (userRole !== 'patient') {
-      return res.status(403).send({ error: 'Only patients can pay bills' });
-    }
-
     if (!upiId || !transactionId) {
       return res.status(400).send({ error: 'UPI ID and Transaction ID are required' });
     }
@@ -305,13 +294,9 @@ router.post('/:billId/pay-with-upi', auth, async (req, res) => {
 });
 
 // Get patient's bills with payment details
-router.get('/patient/my-bills', auth, async (req, res) => {
+router.get('/patient/my-bills', patientOnly, async (req, res) => {
   try {
     const patientId = req.user.id;
-
-    if (req.user.role !== 'patient') {
-      return res.status(403).send({ error: 'Only patients can view their bills' });
-    }
 
     const bills = await Bill.find({ patientId })
       .populate('doctorId', 'firstName lastName specialty')
@@ -327,17 +312,10 @@ router.get('/patient/my-bills', auth, async (req, res) => {
 });
 
 // Delete bill (only doctor can delete their own bills)
-router.delete('/:billId', auth, async (req, res) => {
+router.delete('/:billId', doctorOnly, async (req, res) => {
   try {
     const { billId } = req.params;
     const userId = req.user.id;
-    const userRole = req.user.role;
-
-    // Only doctors can delete bills
-    if (userRole !== 'doctor') {
-      return res.status(403).send({ error: 'Only doctors can delete bills' });
-    }
-
     const bill = await Bill.findById(billId);
 
     if (!bill) {

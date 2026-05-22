@@ -4,20 +4,18 @@ const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const Prescription = require('../models/Prescription');
 const auth = require('../middleware/auth');
+const { requireRole } = require('../middleware/auth');
+const {
+  getDayRange,
+  getWeekday,
+  generateTimeSlots,
+  parseDisplayTime,
+} = require('../utils/appointments');
 
 const router = express.Router();
+const patientOnly = [auth, requireRole('patient')];
 
-const getDayRange = (dateValue) => {
-  const start = new Date(dateValue);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return { start, end };
-};
-
-// auth middleware imported above
-
-router.get('/profile', auth, async (req, res) => {
+router.get('/profile', patientOnly, async (req, res) => {
   try {
     const patient = await Patient.findById(req.user.id).select('-password');
     if (!patient) {
@@ -30,7 +28,7 @@ router.get('/profile', auth, async (req, res) => {
   }
 });
 
-router.put('/profile', auth, async (req, res) => {
+router.put('/profile', patientOnly, async (req, res) => {
   try {
     const { firstName, lastName, email } = req.body;
     const patient = await Patient.findById(req.user.id);
@@ -50,11 +48,23 @@ router.put('/profile', auth, async (req, res) => {
   }
 });
 
-router.post('/book-appointment', auth, async (req, res) => {
+router.post('/book-appointment', patientOnly, async (req, res) => {
   try {
     const { doctorId, date, time, reason } = req.body;
     if (!doctorId || !date || !time || !reason) {
       return res.status(400).send({ error: 'All appointment fields are required' });
+    }
+
+    const appointmentDate = new Date(date);
+    if (Number.isNaN(appointmentDate.getTime())) {
+      return res.status(400).send({ error: 'Invalid appointment date' });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    appointmentDate.setHours(0, 0, 0, 0);
+    if (appointmentDate < today) {
+      return res.status(400).send({ error: 'Appointment date cannot be in the past' });
     }
 
     // Check if doctor is available on this day
@@ -63,8 +73,7 @@ router.post('/book-appointment', auth, async (req, res) => {
       return res.status(404).send({ error: 'Doctor not found' });
     }
 
-    const appointmentDate = new Date(date);
-    const dayOfWeek = appointmentDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+    const dayOfWeek = getWeekday(appointmentDate);
     
     // Handle doctors without availability data (created before update) - allow all times
     if (doctor.availability && doctor.availability[dayOfWeek]) {
@@ -75,16 +84,10 @@ router.post('/book-appointment', auth, async (req, res) => {
       }
 
       // Check if time is within doctor's working hours
-      const [timeStr, period] = time.split(' ');
-      if (!timeStr || !period) {
+      const slotTimeStr = parseDisplayTime(time);
+      if (!slotTimeStr) {
         return res.status(400).send({ error: 'Invalid time format' });
       }
-      
-      const [hours, minutes] = timeStr.split(':');
-      let hour24 = parseInt(hours);
-      if (period === 'PM' && hour24 !== 12) hour24 += 12;
-      if (period === 'AM' && hour24 === 12) hour24 = 0;
-      const slotTimeStr = `${String(hour24).padStart(2, '0')}:${minutes || '00'}`;
       
       const startTime = doctorAvailability.startTime;
       const endTime = doctorAvailability.endTime;
@@ -98,7 +101,8 @@ router.post('/book-appointment', auth, async (req, res) => {
     const existingAppointment = await Appointment.findOne({
       doctorId,
       date: { $gte: start, $lt: end },
-      time
+      time,
+      status: 'scheduled'
     });
 
     if (existingAppointment) {
@@ -120,7 +124,7 @@ router.post('/book-appointment', auth, async (req, res) => {
   }
 });
 
-router.get('/available-slots', auth, async (req, res) => {
+router.get('/available-slots', patientOnly, async (req, res) => {
   try {
     const { doctorId, date } = req.query;
     if (!doctorId || !date) {
@@ -133,32 +137,7 @@ router.get('/available-slots', auth, async (req, res) => {
       return res.status(404).send({ error: 'Doctor not found' });
     }
 
-    const appointmentDate = new Date(date);
-    const dayOfWeek = appointmentDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
-    
-    // Helper function to generate time slots from 24-hour format to 12-hour format
-    const generateTimeSlots = (startTime, endTime) => {
-      const slots = [];
-      const [startHour, startMin] = startTime.split(':').map(Number);
-      const [endHour, endMin] = endTime.split(':').map(Number);
-      
-      let currentHour = startHour;
-      let currentMin = startMin;
-      
-      while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
-        const hour12 = currentHour % 12 || 12;
-        const period = currentHour >= 12 ? 'PM' : 'AM';
-        const slot = `${hour12}:${String(currentMin).padStart(2, '0')} ${period}`;
-        slots.push(slot);
-        
-        currentMin += 60; // Add 1 hour
-        if (currentMin >= 60) {
-          currentHour += Math.floor(currentMin / 60);
-          currentMin = currentMin % 60;
-        }
-      }
-      return slots;
-    };
+    const dayOfWeek = getWeekday(date);
 
     // Handle doctors without availability data (created before update)
     if (!doctor.availability || !doctor.availability[dayOfWeek]) {
@@ -167,7 +146,8 @@ router.get('/available-slots', auth, async (req, res) => {
       const { start, end } = getDayRange(date);
       const bookedAppointments = await Appointment.find({
         doctorId,
-        date: { $gte: start, $lt: end }
+        date: { $gte: start, $lt: end },
+        status: 'scheduled'
       });
       const bookedTimes = bookedAppointments.map(app => app.time);
       const availableSlots = allTimeSlots.filter(slot => !bookedTimes.includes(slot));
@@ -186,19 +166,20 @@ router.get('/available-slots', auth, async (req, res) => {
     const { start, end } = getDayRange(date);
     const bookedAppointments = await Appointment.find({
       doctorId,
-      date: { $gte: start, $lt: end }
+      date: { $gte: start, $lt: end },
+      status: 'scheduled'
     });
     const bookedTimes = bookedAppointments.map(app => app.time);
     const availableSlots = allTimeSlots.filter(slot => !bookedTimes.includes(slot));
     
     res.json(availableSlots);
   } catch (error) {
-    console.error(error);
+    require('../utils/logger').error('Error fetching available slots:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });
 
-router.get('/appointments', auth, async (req, res) => {
+router.get('/appointments', patientOnly, async (req, res) => {
   try {
     const patientId = req.user.id;
     const today = new Date();
@@ -219,7 +200,7 @@ router.get('/appointments', auth, async (req, res) => {
   }
 });
 
-router.get('/history', auth, async (req, res) => {
+router.get('/history', patientOnly, async (req, res) => {
   try {
     const patientId = req.user.id;
     const today = new Date();
@@ -246,7 +227,7 @@ router.get('/history', auth, async (req, res) => {
   }
 });
 
-router.get('/care-team', auth, async (req, res) => {
+router.get('/care-team', patientOnly, async (req, res) => {
   try {
     const patientId = req.user.id;
     const appointments = await Appointment.find({ patientId }).distinct('doctorId');
@@ -258,7 +239,7 @@ router.get('/care-team', auth, async (req, res) => {
   }
 });
 
-router.get('/prescriptions', auth, async (req, res) => {
+router.get('/prescriptions', patientOnly, async (req, res) => {
   try {
     const patientId = req.user.id;
     const prescriptions = await Prescription.find({ patientId }).populate('doctorId', 'firstName lastName');
@@ -269,7 +250,7 @@ router.get('/prescriptions', auth, async (req, res) => {
   }
 });
 
-router.delete('/appointments/:appointmentId', auth, async (req, res) => {
+router.delete('/appointments/:appointmentId', patientOnly, async (req, res) => {
   try {
     const { appointmentId } = req.params;
     const appointment = await Appointment.findById(appointmentId);

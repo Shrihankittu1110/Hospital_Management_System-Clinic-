@@ -1,8 +1,9 @@
-const rawApiBaseUrl = (
-  process.env.REACT_APP_API_BASE_URL ||
-  process.env.REACT_APP_API_URL ||
-  'http://localhost:5000'
-).trim();
+const getEnv = () => {
+  const metaEnv = import.meta.env || {};
+  return metaEnv.VITE_API_BASE_URL || metaEnv.VITE_API_URL || null;
+};
+
+const rawApiBaseUrl = (getEnv() || 'http://localhost:5002').trim();
 
 const normalizeApiBaseUrl = (value) => {
   const sanitized = value.replace(/\/+$/, '').replace(/\/(login|signup)$/i, '');

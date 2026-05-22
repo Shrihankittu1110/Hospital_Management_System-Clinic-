@@ -26,14 +26,6 @@ const DNS_SERVERS = (process.env.DNS_SERVERS || '')
   .map((server) => server.trim())
   .filter(Boolean);
 const DEFAULT_ALLOWED_ORIGINS = [
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'http://localhost:4173',
-  'http://127.0.0.1:4173',
-  'http://localhost:3004',
-  'http://127.0.0.1:3004',
   'https://hospital-management-system-clinic.vercel.app',
 ];
 const configuredOrigins = [process.env.CORS_ORIGIN, process.env.FRONTEND_URL]

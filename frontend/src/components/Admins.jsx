@@ -45,6 +45,21 @@ const CardFooter = ({ children }) => (
 	<div className="px-4 py-4 sm:px-6">{children}</div>
 );
 
+const LoadingMetric = () => (
+	<div className="space-y-3 animate-pulse">
+		<div className="h-8 w-20 rounded bg-slate-200" />
+		<div className="h-3 w-32 rounded bg-slate-100" />
+	</div>
+);
+
+const LoadingList = () => (
+	<div className="space-y-3 animate-pulse">
+		<div className="h-4 w-28 rounded bg-slate-200" />
+		<div className="h-3 w-full rounded bg-slate-100" />
+		<div className="h-3 w-2/3 rounded bg-slate-100" />
+	</div>
+);
+
 const Input = ({ ...props }) => (
 	<input
 		className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md px-1 h-6"
@@ -104,6 +119,8 @@ export default function AdminDashboard() {
 	const [doctorOverview, setDoctorOverview] = useState([]);
 	const [patientOverview, setPatientOverview] = useState([]);
 	const [appointments, setAppointments] = useState([]);
+	const [dashboardLoading, setDashboardLoading] = useState(true);
+	const [appointmentsLoading, setAppointmentsLoading] = useState(true);
 	const [completeConfirm, setCompleteConfirm] = useState(null);
 	const [cancelConfirm, setCancelConfirm] = useState(null);
 	const [hospitalCapacity] = useState(10000);
@@ -149,12 +166,20 @@ export default function AdminDashboard() {
 
 	useEffect(() => {
 		fetchAdminProfile();
-		fetchTotalDoctors();
-		fetchTotalPatients();
-		fetchDoctorOverview();
-		fetchPatientOverview();
+		loadDashboardData();
 		fetchAppointments();
 	}, []);
+
+	const loadDashboardData = async () => {
+		setDashboardLoading(true);
+		await Promise.all([
+			fetchTotalDoctors(),
+			fetchTotalPatients(),
+			fetchDoctorOverview(),
+			fetchPatientOverview(),
+		]);
+		setDashboardLoading(false);
+	};
 
 	const fetchAdminProfile = async () => {
 		try {
@@ -270,6 +295,7 @@ export default function AdminDashboard() {
 
 	const fetchAppointments = async () => {
 		try {
+			setAppointmentsLoading(true);
 			const token = localStorage.getItem('token');
 			if (!token) {
 				return;
@@ -287,6 +313,8 @@ export default function AdminDashboard() {
 			}
 		} catch (error) {
 			console.error('Error fetching appointments:', error);
+		} finally {
+			setAppointmentsLoading(false);
 		}
 	};
 
@@ -376,14 +404,23 @@ export default function AdminDashboard() {
 		const occupancyRate = ((totalPatients / hospitalCapacity) * 100).toFixed(2);
 		return (
 			<>
+				{dashboardLoading && (
+					<p className="mb-4 rounded-md border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700">
+						Loading dashboard data, please wait...
+					</p>
+				)}
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 					<Card>
 						<CardHeader icon={Stethoscope}>
 							<CardTitle className="text-sm font-medium">Total Doctors</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="text-2xl font-bold">{totalDoctors}</div>
-							<p className="text-xs text-gray-500">Active medical staff</p>
+							{dashboardLoading ? <LoadingMetric /> : (
+								<>
+									<div className="text-2xl font-bold">{totalDoctors}</div>
+									<p className="text-xs text-gray-500">Active medical staff</p>
+								</>
+							)}
 						</CardContent>
 					</Card>
 					<Card>
@@ -391,8 +428,12 @@ export default function AdminDashboard() {
 							<CardTitle className="text-sm font-medium">Total Patients</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="text-2xl font-bold">{totalPatients}</div>
-							<p className="text-xs text-gray-500">Currently admitted</p>
+							{dashboardLoading ? <LoadingMetric /> : (
+								<>
+									<div className="text-2xl font-bold">{totalPatients}</div>
+									<p className="text-xs text-gray-500">Currently admitted</p>
+								</>
+							)}
 						</CardContent>
 					</Card>
 					<Card>
@@ -400,8 +441,12 @@ export default function AdminDashboard() {
 							<CardTitle className="text-sm font-medium">Hospital Occupancy</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="text-2xl font-bold">{occupancyRate}%</div>
-							<p className="text-xs text-gray-500">Bed occupancy rate</p>
+							{dashboardLoading ? <LoadingMetric /> : (
+								<>
+									<div className="text-2xl font-bold">{occupancyRate}%</div>
+									<p className="text-xs text-gray-500">Bed occupancy rate</p>
+								</>
+							)}
 						</CardContent>
 					</Card>
 				</div>
@@ -411,8 +456,12 @@ export default function AdminDashboard() {
 							<CardTitle className="text-sm font-medium">Doctor Overview</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="text-2xl font-bold">{doctorOverview.length}</div>
-							<p className="text-xs text-gray-500">Total doctors on staff</p>
+							{dashboardLoading ? <LoadingList /> : (
+								<>
+									<div className="text-2xl font-bold">{doctorOverview.length}</div>
+									<p className="text-xs text-gray-500">Total doctors on staff</p>
+								</>
+							)}
 						</CardContent>
 						<CardFooter className="p-2">...
 						</CardFooter>
@@ -462,8 +511,7 @@ export default function AdminDashboard() {
 				password: '',
 			});
 			showSuccessPopup('Doctor Created Successfully', data.message || 'Doctor account created successfully.');
-			fetchTotalDoctors();
-			fetchDoctorOverview();
+			loadDashboardData();
 		} catch (error) {
 			showErrorPopup('Doctor Creation Failed', 'Could not connect to the server. Please try again.');
 		}
@@ -518,7 +566,16 @@ export default function AdminDashboard() {
 				<CardTitle>Appointment Management</CardTitle>
 			</CardHeader>
 			<CardContent>
-				{appointments.length === 0 ? (
+				{appointmentsLoading ? (
+					<div className="rounded-md border border-blue-100 bg-blue-50 px-4 py-6 text-center">
+						<p className="text-sm font-medium text-blue-700">Loading appointments, please wait...</p>
+						<div className="mt-4 grid gap-3 animate-pulse">
+							<div className="h-4 rounded bg-blue-100" />
+							<div className="h-4 rounded bg-blue-100" />
+							<div className="h-4 rounded bg-blue-100" />
+						</div>
+					</div>
+				) : appointments.length === 0 ? (
 					<p className="text-sm text-slate-500 bg-slate-50 border border-dashed border-slate-200 rounded-md px-4 py-6 text-center">
 						No scheduled appointments.
 					</p>
@@ -609,7 +666,17 @@ export default function AdminDashboard() {
 					<CardTitle>Doctor Overview</CardTitle>
 				</CardHeader>
 				<CardContent>
-					{doctorOverview.length === 0 ? (
+					{dashboardLoading ? (
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							{[1, 2, 3, 4].map((item) => (
+								<div key={item} className="rounded-md border border-slate-100 p-4 animate-pulse">
+									<div className="h-4 w-32 rounded bg-slate-200" />
+									<div className="mt-3 h-3 w-24 rounded bg-slate-100" />
+									<div className="mt-4 h-3 w-20 rounded bg-blue-100" />
+								</div>
+							))}
+						</div>
+					) : doctorOverview.length === 0 ? (
 						<p className="text-sm text-slate-500 bg-slate-50 border border-dashed border-slate-200 rounded-md px-4 py-6 text-center">
 							No doctor overview data yet.
 						</p>
@@ -680,7 +747,16 @@ export default function AdminDashboard() {
 				<CardTitle>Patient Overview</CardTitle>
 			</CardHeader>
 			<CardContent>
-				{patientOverview.length === 0 ? (
+				{dashboardLoading ? (
+					<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+						{[1, 2, 3].map((item) => (
+							<div key={item} className="rounded-md border border-slate-100 p-4 animate-pulse">
+								<div className="h-4 w-32 rounded bg-slate-200" />
+								<div className="mt-3 h-3 w-24 rounded bg-slate-100" />
+							</div>
+						))}
+					</div>
+				) : patientOverview.length === 0 ? (
 					<p className="text-sm text-slate-500 bg-slate-50 border border-dashed border-slate-200 rounded-md px-4 py-6 text-center">
 						No patient overview data yet.
 					</p>

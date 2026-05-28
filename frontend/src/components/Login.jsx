@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, User, Stethoscope, Eye, EyeOff, Home as HomeIcon } from 'lucide-react';
+import { Shield, User, Stethoscope, Eye, EyeOff, Home as HomeIcon, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MessagePopup from './MessagePopup';
 import { API_BASE_URL } from '../utils/apiBase';
@@ -12,6 +12,7 @@ const Login = ({ onClose, onSwitchToSignup }) => {
 	const [error, setError] = useState(null);
 	const [showPassword, setShowPassword] = useState(false);
 	const [popup, setPopup] = useState(null);
+	const [isLoggingIn, setIsLoggingIn] = useState(false);
 
 	const roles = [
 		{ id: 'admin', label: 'Admin', icon: Shield },
@@ -21,6 +22,13 @@ const Login = ({ onClose, onSwitchToSignup }) => {
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
+		if (isLoggingIn) {
+			return;
+		}
+
+		setError(null);
+		setIsLoggingIn(true);
+
 		try {
 			const response = await fetch(`${API_BASE_URL}/login`, {
 				method: 'POST',
@@ -49,6 +57,8 @@ const Login = ({ onClose, onSwitchToSignup }) => {
 			}
 		} catch (error) {
 			setError('An error occurred. Please try again.');
+		} finally {
+			setIsLoggingIn(false);
 		}
 	};
 
@@ -84,8 +94,10 @@ const Login = ({ onClose, onSwitchToSignup }) => {
 						{roles.map((role) => (
 							<button
 								key={role.id}
+								type="button"
+								disabled={isLoggingIn}
 								onClick={() => setSelectedRole(role.id)}
-								className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md transition-all duration-200 ${
+								className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
 									selectedRole === role.id
 										? 'bg-blue-600 text-white shadow-lg scale-[1.02] ring-2 ring-white/60'
 										: 'text-blue-600 hover:bg-white/70 hover:shadow-sm'
@@ -108,6 +120,7 @@ const Login = ({ onClose, onSwitchToSignup }) => {
 								onChange={(e) => setEmail(e.target.value)}
 								placeholder="Enter your email"
 								className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+								disabled={isLoggingIn}
 								required
 							/>
 						</div>
@@ -123,12 +136,14 @@ const Login = ({ onClose, onSwitchToSignup }) => {
 									onChange={(e) => setPassword(e.target.value)}
 									placeholder="Enter your password"
 									className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+									disabled={isLoggingIn}
 									required
 								/>
 								<button
 									type="button"
 									className="absolute inset-y-0 right-0 pr-3 flex items-center"
 									onClick={() => setShowPassword(!showPassword)}
+									disabled={isLoggingIn}
 								>
 									{showPassword ? (
 										<EyeOff className="h-5 w-5 text-gray-400" />
@@ -143,9 +158,11 @@ const Login = ({ onClose, onSwitchToSignup }) => {
 						</div>
 						<button
 							type="submit"
-							className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors"
+							disabled={isLoggingIn}
+							className="w-full inline-flex items-center justify-center gap-2 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors disabled:cursor-not-allowed disabled:bg-blue-400"
 						>
-							Login as {roles.find((r) => r.id === selectedRole)?.label}
+							{isLoggingIn && <Loader2 className="h-4 w-4 animate-spin" />}
+							{isLoggingIn ? 'Logging in, please wait...' : `Login as ${roles.find((r) => r.id === selectedRole)?.label}`}
 						</button>
 					</form>
 				</div>

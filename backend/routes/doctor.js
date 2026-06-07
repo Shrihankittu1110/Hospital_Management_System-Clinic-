@@ -474,7 +474,7 @@ router.get('/history', doctorOnly, async (req, res) => {
 
     const appointments = await Appointment.find({
       doctorId,
-      status: 'completed'
+      status: { $in: ['completed', 'cancelled'] }
     })
       .populate('patientId', 'firstName lastName')
       .sort({ date: -1, time: -1 });

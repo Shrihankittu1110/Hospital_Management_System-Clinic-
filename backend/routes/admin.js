@@ -3,6 +3,7 @@ const Doctor = require('../models/Doctor');
 const Admin = require('../models/Admin');
 const User = require('../models/User');
 const Appointment = require('../models/Appointment');
+const Bill = require('../models/Bill');
 const auth = require('../middleware/auth');
 const { requireRole } = require('../middleware/auth');
 
@@ -160,6 +161,34 @@ router.put('/appointments/:appointmentId/status', async (req, res) => {
 
     appointment.status = status;
     await appointment.save();
+
+    if (status === 'completed') {
+      try {
+        const existingBill = await Bill.findOne({ appointmentId });
+        if (!existingBill) {
+          const billNumber = await Bill.generateBillNumber();
+          const consultationFee = 500;
+          const taxRate = 10;
+
+          const bill = new Bill({
+            billNumber,
+            appointmentId,
+            patientId: appointment.patientId,
+            doctorId: appointment.doctorId,
+            appointmentDate: appointment.date,
+            consultationFee,
+            taxRate,
+            description: 'Consultation Fee',
+            notes: `Appointment Reason: ${appointment.reason}`
+          });
+
+          await bill.save();
+          require('../utils/logger').info(`Bill ${billNumber} auto-generated for appointment ${appointmentId}`);
+        }
+      } catch (billError) {
+        require('../utils/logger').error('Error auto-generating bill:', billError);
+      }
+    }
 
     res.json({ message: `Appointment marked as ${status}`, appointment });
   } catch (error) {

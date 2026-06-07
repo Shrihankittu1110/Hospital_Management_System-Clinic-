@@ -574,7 +574,7 @@ export default function DoctorDashboard() {
 			<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
 				<Card><CardContent><p className="text-sm text-slate-500">Scheduled appointments</p><p className="text-3xl font-bold text-slate-900 mt-2">{appointments.length}</p></CardContent></Card>
 				<Card><CardContent><p className="text-sm text-slate-500">Patients</p><p className="text-3xl font-bold text-slate-900 mt-2">{patients.length}</p></CardContent></Card>
-				<Card><CardContent><p className="text-sm text-slate-500">Completed visits</p><p className="text-3xl font-bold text-slate-900 mt-2">{historyData.appointments.length}</p></CardContent></Card>
+				<Card><CardContent><p className="text-sm text-slate-500">Completed visits</p><p className="text-3xl font-bold text-slate-900 mt-2">{historyData.appointments.filter((appointment) => appointment.status === 'completed').length}</p></CardContent></Card>
 				<Card><CardContent><p className="text-sm text-slate-500">Unpaid bills</p><p className="text-3xl font-bold text-slate-900 mt-2">{unpaidBills}</p></CardContent></Card>
 			</div>
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -790,7 +790,7 @@ export default function DoctorDashboard() {
 		<Card>
 			<CardHeader icon={FileText}><CardTitle>History</CardTitle></CardHeader>
 			<CardContent>
-				{historyData.appointments.length === 0 ? <EmptyState>No completed appointments yet.</EmptyState> : (
+				{historyData.appointments.length === 0 ? <EmptyState>No completed or cancelled appointments yet.</EmptyState> : (
 					<div className="space-y-3">
 						{historyData.appointments.map((appointment) => (
 							<div key={appointment._id} className="rounded-md border border-slate-100 p-3">
@@ -905,4 +905,3 @@ export default function DoctorDashboard() {
 	);
 
 }
-

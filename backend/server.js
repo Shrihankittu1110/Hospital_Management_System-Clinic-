@@ -34,6 +34,36 @@ const configuredOrigins = [process.env.CORS_ORIGIN, process.env.FRONTEND_URL]
   .map((origin) => origin.trim())
   .filter(Boolean);
 const allowedOrigins = configuredOrigins.length > 0 ? configuredOrigins : DEFAULT_ALLOWED_ORIGINS;
+const devOrigins = [
+  'http://localhost:3004',
+  'http://127.0.0.1:3004',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+];
+const corsOrigins = [...new Set([...allowedOrigins, ...devOrigins])];
+const isLocalDevOrigin = (origin) => {
+  if (process.env.NODE_ENV === 'production' || !origin) {
+    return false;
+  }
+
+  try {
+    const { hostname, protocol } = new URL(origin);
+    return protocol === 'http:' && (hostname === 'localhost' || hostname === '127.0.0.1');
+  } catch (error) {
+    return false;
+  }
+};
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || corsOrigins.includes(origin) || isLocalDevOrigin(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new ApiError(403, 'Origin is not allowed by CORS'));
+  },
+  credentials: true,
+};
 
 if (DNS_SERVERS.length > 0) {
   dns.setServers(DNS_SERVERS);
@@ -48,15 +78,9 @@ app.use(createRateLimiter({
   maxRequests: RATE_LIMIT_MAX_REQUESTS,
 }));
 app.use(
-  cors({
-    origin: [
-      "https://hospital-management-system-clinic.vercel.app",
-      "https://hospital-management-system-clinic-a9lab6p2q.vercel.app",
-      "https://hospital-management-system-clinic-bmneptmqv.vercel.app",
-    ],
-    credentials: true,
-  })
+  cors(corsOptions)
 );
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
 
 // MongoDB connection

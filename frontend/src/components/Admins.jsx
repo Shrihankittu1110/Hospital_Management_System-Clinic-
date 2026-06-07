@@ -121,8 +121,6 @@ export default function AdminDashboard() {
 	const [appointments, setAppointments] = useState([]);
 	const [dashboardLoading, setDashboardLoading] = useState(true);
 	const [appointmentsLoading, setAppointmentsLoading] = useState(true);
-	const [completeConfirm, setCompleteConfirm] = useState(null);
-	const [cancelConfirm, setCancelConfirm] = useState(null);
 	const [hospitalCapacity] = useState(10000);
 	const navigate = useNavigate();
 
@@ -319,85 +317,61 @@ export default function AdminDashboard() {
 	};
 
 	const handleCompleteAppointment = (appointmentId) => {
-		setCompleteConfirm({
+		setPopup({
 			title: 'Complete Appointment',
 			message: 'Mark this appointment as completed?',
-			appointmentId: appointmentId
+			variant: 'confirm',
+			confirmLabel: 'Complete',
+			cancelLabel: 'Cancel',
+			onConfirm: () => updateAppointmentStatus(appointmentId, 'completed'),
+			onCancel: () => setPopup(null),
 		});
 	};
 
-	const confirmCompleteAppointment = async () => {
-		if (!completeConfirm) return;
-    
+	const updateAppointmentStatus = async (appointmentId, status) => {
 		try {
 			const token = localStorage.getItem('token');
-			const response = await fetch(`${API_BASE_URL}/admin/appointments/${completeConfirm.appointmentId}/status`, {
+			const response = await fetch(`${API_BASE_URL}/admin/appointments/${appointmentId}/status`, {
 				method: 'PUT',
 				headers: {
 					'Authorization': `Bearer ${token}`,
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify({ status: 'completed' })
+				body: JSON.stringify({ status })
 			});
+			const data = await response.json();
+
 			if (response.ok) {
-				setCompleteConfirm(null);
 				setPopup({
-					title: 'Appointment Completed',
-					message: 'Appointment marked as completed successfully.',
+					title: status === 'completed' ? 'Appointment Completed' : 'Appointment Cancelled',
+					message: data.message || `Appointment marked as ${status}.`,
 					variant: 'success',
 					confirmLabel: 'OK',
 				});
 				fetchAppointments();
-			} else {
-				const errorData = await response.json();
-				setCompleteConfirm(null);
-				showErrorPopup('Completion Failed', `Failed to mark appointment as complete: ${errorData.error}`);
+				loadDashboardData();
+				return;
 			}
+
+			showErrorPopup(
+				status === 'completed' ? 'Completion Failed' : 'Cancellation Failed',
+				data.error || `Failed to mark appointment as ${status}.`
+			);
 		} catch (error) {
-			setCompleteConfirm(null);
-			showErrorPopup('Error', 'Error marking appointment complete. Please try again.');
+			showErrorPopup('Error', 'Error updating appointment. Please try again.');
 		}
 	};
 
 	const handleCancelAppointment = (appointmentId) => {
-		setCancelConfirm({
+		setPopup({
 			title: 'Cancel Appointment',
 			message: 'Are you sure you want to cancel this appointment?',
-			appointmentId: appointmentId
+			variant: 'confirm',
+			confirmLabel: 'Cancel Appointment',
+			cancelLabel: 'Keep',
+			onConfirm: () => updateAppointmentStatus(appointmentId, 'cancelled'),
+			onCancel: () => setPopup(null),
 		});
-	};
-
-	const confirmCancelAppointment = async () => {
-		if (!cancelConfirm) return;
-    
-		try {
-			const token = localStorage.getItem('token');
-			const response = await fetch(`${API_BASE_URL}/admin/appointments/${cancelConfirm.appointmentId}/status`, {
-				method: 'PUT',
-				headers: {
-					'Authorization': `Bearer ${token}`,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ status: 'cancelled' })
-			});
-			if (response.ok) {
-				setCancelConfirm(null);
-				setPopup({
-					title: 'Appointment Cancelled',
-					message: 'Appointment cancelled successfully.',
-					variant: 'success',
-					confirmLabel: 'OK',
-				});
-				fetchAppointments();
-			} else {
-				const errorData = await response.json();
-				setCancelConfirm(null);
-				showErrorPopup('Cancellation Failed', `Failed to cancel appointment: ${errorData.error}`);
-			}
-		} catch (error) {
-			setCancelConfirm(null);
-			showErrorPopup('Error', 'Error cancelling appointment. Please try again.');
-		}
 	};
 
 	const renderDashboard = () => {

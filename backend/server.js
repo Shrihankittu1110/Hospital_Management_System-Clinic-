@@ -33,7 +33,7 @@ const configuredOrigins = [process.env.CORS_ORIGIN, process.env.FRONTEND_URL]
   .flatMap((value) => value.split(','))
   .map((origin) => origin.trim())
   .filter(Boolean);
-const allowedOrigins = configuredOrigins.length > 0 ? configuredOrigins : DEFAULT_ALLOWED_ORIGINS;
+const allowedOrigins = [...new Set([...DEFAULT_ALLOWED_ORIGINS, ...configuredOrigins])];
 const devOrigins = [
   'http://localhost:3004',
   'http://127.0.0.1:3004',

@@ -26,6 +26,8 @@ const navItems = [
   { id: 'Profile', label: 'Profile', icon: UserCircle },
 ];
 
+const MIN_APPOINTMENT_REASON_LENGTH = 10;
+
 const Card = ({ children, className = '' }) => (
   <section className={`bg-white rounded-lg shadow-sm border border-blue-100 ${className}`}>
     {children}
@@ -199,11 +201,22 @@ export default function PatientDashboard() {
 
   const handleBookAppointment = async (event) => {
     event.preventDefault();
+    const trimmedReason = bookingForm.reason.trim();
 
-    if (!bookingForm.doctorId || !bookingForm.date || !bookingForm.time || !bookingForm.reason.trim()) {
+    if (!bookingForm.doctorId || !bookingForm.date || !bookingForm.time || !trimmedReason) {
       setPopup({
         title: 'Missing Details',
         message: 'Please select a doctor, date, time, and reason before booking.',
+        variant: 'error',
+        confirmLabel: 'OK',
+      });
+      return;
+    }
+
+    if (trimmedReason.length < MIN_APPOINTMENT_REASON_LENGTH) {
+      setPopup({
+        title: 'Reason Too Short',
+        message: 'Please enter at least 10 characters for the appointment reason.',
         variant: 'error',
         confirmLabel: 'OK',
       });
@@ -217,7 +230,7 @@ export default function PatientDashboard() {
           ...authHeaders(),
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(bookingForm),
+        body: JSON.stringify({ ...bookingForm, reason: trimmedReason }),
       });
 
       const data = await response.json();
@@ -614,6 +627,7 @@ export default function PatientDashboard() {
                 value={bookingForm.reason}
                 onChange={handleBookingChange}
                 placeholder="Brief reason for visit"
+                minLength={MIN_APPOINTMENT_REASON_LENGTH}
                 className="w-full rounded-md border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />

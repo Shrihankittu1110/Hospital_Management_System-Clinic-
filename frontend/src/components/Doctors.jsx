@@ -1,7 +1,7 @@
 // Full Doctors component implementation (kept in sync with original Doctors.js)
 import React, { useState, useEffect } from 'react';
 // eslint-disable-next-line no-unused-vars
-import { Calendar, Clock, FileText, User, Users, ChevronDown, Home, UserCircle, Hospital, Stethoscope, Activity, DollarSign, UserPlus, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Calendar, Clock, FileText, User, Users, ChevronDown, Home, UserCircle, Hospital, Stethoscope, Activity, DollarSign, UserPlus, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MessagePopup from './MessagePopup';
 import { API_BASE_URL } from '../utils/apiBase';
@@ -78,6 +78,8 @@ const doctorNavItems = [
 	{ id: 'Profile', label: 'Profile', icon: UserCircle },
 ];
 
+const MIN_APPOINTMENT_REASON_LENGTH = 10;
+
 const weekDays = [
 	'monday',
 	'tuesday',
@@ -105,6 +107,17 @@ const EmptyState = ({ children }) => (
 		{children}
 	</p>
 );
+
+const EmergencyBadge = ({ appointment }) => {
+	if (!appointment.isEmergency) return null;
+
+	return (
+		<span className="inline-flex items-center gap-1 rounded bg-rose-50 px-2 py-1 text-xs font-semibold uppercase text-rose-700">
+			<AlertTriangle size={13} />
+			{appointment.emergencyPriority || 'emergency'}
+		</span>
+	);
+};
 
 export default function DoctorDashboard() {
 	const [showAppointments, setShowAppointments] = useState(false);
@@ -216,13 +229,25 @@ export default function DoctorDashboard() {
 	};
 
 	const scheduleAppointment = async () => {
+		const trimmedReason = schedulingData.reason.trim();
+
+		if (!schedulingData.patientId || !schedulingData.date || !schedulingData.time || !trimmedReason) {
+			showErrorPopup('Missing Details', 'Please select a patient, date, time, and reason before scheduling.');
+			return;
+		}
+
+		if (trimmedReason.length < MIN_APPOINTMENT_REASON_LENGTH) {
+			showErrorPopup('Reason Too Short', 'Please enter at least 10 characters for the appointment reason.');
+			return;
+		}
+
 		try {
 			const token = localStorage.getItem('token');
 			const body = {
 				patientId: schedulingData.patientId,
 				date: schedulingData.date,
 				time: schedulingData.time,
-				reason: schedulingData.reason,
+				reason: trimmedReason,
 			};
 			const response = await fetch(`${API_BASE_URL}/doctor/schedule-appointment`, {
 				method: 'POST',
@@ -527,6 +552,7 @@ export default function DoctorDashboard() {
 	const doctorName = doctorInfo ? `Dr. ${doctorInfo.firstName} ${doctorInfo.lastName}` : 'Doctor';
 	const paidBills = bills.filter((bill) => bill.paymentStatus === 'paid').length;
 	const unpaidBills = bills.filter((bill) => bill.paymentStatus !== 'paid').length;
+	const emergencyAppointments = appointments.filter((appointment) => appointment.isEmergency);
 
 	const handleAvailabilityChange = (day, field, value) => {
 		setEditedAvailability((current) => ({
@@ -573,9 +599,9 @@ export default function DoctorDashboard() {
 		<div className="space-y-6">
 			<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
 				<Card><CardContent><p className="text-sm text-slate-500">Scheduled appointments</p><p className="text-3xl font-bold text-slate-900 mt-2">{appointments.length}</p></CardContent></Card>
+				<Card><CardContent><p className="text-sm text-slate-500">Emergency requests</p><p className="text-3xl font-bold text-rose-700 mt-2">{emergencyAppointments.length}</p></CardContent></Card>
 				<Card><CardContent><p className="text-sm text-slate-500">Patients</p><p className="text-3xl font-bold text-slate-900 mt-2">{patients.length}</p></CardContent></Card>
 				<Card><CardContent><p className="text-sm text-slate-500">Completed visits</p><p className="text-3xl font-bold text-slate-900 mt-2">{historyData.appointments.filter((appointment) => appointment.status === 'completed').length}</p></CardContent></Card>
-				<Card><CardContent><p className="text-sm text-slate-500">Unpaid bills</p><p className="text-3xl font-bold text-slate-900 mt-2">{unpaidBills}</p></CardContent></Card>
 			</div>
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 				<Card>
@@ -584,10 +610,18 @@ export default function DoctorDashboard() {
 						{appointments.length === 0 ? <EmptyState>No scheduled appointments.</EmptyState> : (
 							<div className="space-y-3">
 								{appointments.slice(0, 4).map((appointment) => (
-									<div key={appointment._id} className="rounded-md border border-slate-100 p-3">
-										<p className="font-semibold text-slate-900">{appointment.patientId?.firstName} {appointment.patientId?.lastName}</p>
+									<div key={appointment._id} className={`rounded-md border p-3 ${appointment.isEmergency ? 'border-rose-100 bg-rose-50/50' : 'border-slate-100'}`}>
+										<div className="flex items-start justify-between gap-3">
+											<p className="font-semibold text-slate-900">{appointment.patientId?.firstName} {appointment.patientId?.lastName}</p>
+											<EmergencyBadge appointment={appointment} />
+										</div>
 										<p className="text-sm text-slate-500">{new Date(appointment.date).toLocaleDateString()} at {appointment.time}</p>
 										<p className="text-sm text-slate-600 mt-1">{appointment.reason}</p>
+										{appointment.isEmergency && (
+											<p className="text-xs text-rose-700 mt-2">
+												{appointment.emergencyStatus || 'pending'}{appointment.location ? ` - ${appointment.location}` : ''}
+											</p>
+										)}
 									</div>
 								))}
 							</div>
@@ -671,7 +705,7 @@ export default function DoctorDashboard() {
 							</div>
 							<div>
 								<label className="block text-sm text-slate-700">Reason</label>
-								<input value={schedulingData.reason} onChange={(e) => setSchedulingData((s) => ({ ...s, reason: e.target.value }))} className="mt-1 block w-full rounded-md border-gray-300" />
+								<input value={schedulingData.reason} onChange={(e) => setSchedulingData((s) => ({ ...s, reason: e.target.value }))} minLength={MIN_APPOINTMENT_REASON_LENGTH} className="mt-1 block w-full rounded-md border-gray-300" />
 							</div>
 						</div>
 						<div className="mt-3 flex gap-2 justify-end">
@@ -686,9 +720,11 @@ export default function DoctorDashboard() {
 							<thead className="bg-slate-50 text-slate-600">
 								<tr>
 									<th className="text-left p-3">Patient</th>
+									<th className="text-left p-3">Type</th>
 									<th className="text-left p-3">Date</th>
 									<th className="text-left p-3">Time</th>
 									<th className="text-left p-3">Reason</th>
+									<th className="text-left p-3">Emergency Details</th>
 									<th className="text-left p-3">Actions</th>
 								</tr>
 							</thead>
@@ -697,9 +733,23 @@ export default function DoctorDashboard() {
 									<React.Fragment key={appointment._id}>
 										<tr className="border-t">
 											<td className="p-3">{appointment.patientId?.firstName} {appointment.patientId?.lastName}</td>
+											<td className="p-3">
+												{appointment.isEmergency ? <EmergencyBadge appointment={appointment} /> : <span className="text-xs text-slate-500">Regular</span>}
+											</td>
 											<td className="p-3">{new Date(appointment.date).toLocaleDateString()}</td>
 											<td className="p-3">{appointment.time}</td>
 											<td className="p-3">{appointment.reason}</td>
+											<td className="p-3">
+												{appointment.isEmergency ? (
+													<div className="space-y-1 text-xs text-slate-600">
+														<p><span className="font-semibold text-slate-700">Status:</span> {appointment.emergencyStatus || 'pending'}</p>
+														<p><span className="font-semibold text-slate-700">Phone:</span> {appointment.contactPhone || 'Not provided'}</p>
+														<p><span className="font-semibold text-slate-700">Location:</span> {appointment.location || 'Not provided'}</p>
+													</div>
+												) : (
+													<span className="text-xs text-slate-400">-</span>
+												)}
+											</td>
 											<td className="p-3">
 												<div className="flex flex-wrap gap-2">
 													<Button className="px-3 py-1" onClick={() => handleCompleteAppointment(appointment)}>Complete</Button>
@@ -710,7 +760,7 @@ export default function DoctorDashboard() {
 										</tr>
 										{prescribingFor && prescribingFor._id === appointment._id && (
 											<tr>
-												<td colSpan={5} className="p-3 bg-slate-50">
+												<td colSpan={7} className="p-3 bg-slate-50">
 													<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 														<input placeholder="Medication" value={prescriptionData.medication} onChange={(e) => setPrescriptionData((s) => ({ ...s, medication: e.target.value }))} className="px-2 py-1 border rounded-md" />
 														<input placeholder="Dosage" value={prescriptionData.dosage} onChange={(e) => setPrescriptionData((s) => ({ ...s, dosage: e.target.value }))} className="px-2 py-1 border rounded-md" />

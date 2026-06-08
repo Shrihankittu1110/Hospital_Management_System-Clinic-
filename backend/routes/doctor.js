@@ -16,6 +16,7 @@ const {
 
 const router = express.Router();
 const doctorOnly = [auth, requireRole('doctor')];
+const MIN_APPOINTMENT_REASON_LENGTH = 10;
 
 router.get('/profile', doctorOnly, async (req, res) => {
   try {
@@ -170,6 +171,11 @@ router.post('/schedule-appointment', doctorOnly, async (req, res) => {
       return res.status(400).send({ error: 'All appointment fields are required' });
     }
 
+    const trimmedReason = reason.trim();
+    if (trimmedReason.length < MIN_APPOINTMENT_REASON_LENGTH) {
+      return res.status(400).send({ error: 'Appointment reason must be at least 10 characters' });
+    }
+
     const appointmentDate = new Date(date);
     if (Number.isNaN(appointmentDate.getTime())) {
       return res.status(400).send({ error: 'Invalid appointment date' });
@@ -222,7 +228,7 @@ router.post('/schedule-appointment', doctorOnly, async (req, res) => {
       doctorId,
       date,
       time,
-      reason
+      reason: trimmedReason
     });
 
     await appointment.save();
@@ -459,7 +465,7 @@ router.get('/appointments', doctorOnly, async (req, res) => {
       status: 'scheduled'
     })
       .populate('patientId', 'firstName lastName')
-      .sort({ date: 1 });
+      .sort({ isEmergency: -1, createdAt: 1, date: 1, time: 1 });
     
     res.json(appointments);
   } catch (error) {

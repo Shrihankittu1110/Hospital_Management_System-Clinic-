@@ -14,6 +14,7 @@ const {
 
 const router = express.Router();
 const patientOnly = [auth, requireRole('patient')];
+const MIN_APPOINTMENT_REASON_LENGTH = 10;
 
 router.get('/profile', patientOnly, async (req, res) => {
   try {
@@ -53,6 +54,11 @@ router.post('/book-appointment', patientOnly, async (req, res) => {
     const { doctorId, date, time, reason } = req.body;
     if (!doctorId || !date || !time || !reason) {
       return res.status(400).send({ error: 'All appointment fields are required' });
+    }
+
+    const trimmedReason = reason.trim();
+    if (trimmedReason.length < MIN_APPOINTMENT_REASON_LENGTH) {
+      return res.status(400).send({ error: 'Appointment reason must be at least 10 characters' });
     }
 
     const appointmentDate = new Date(date);
@@ -114,7 +120,7 @@ router.post('/book-appointment', patientOnly, async (req, res) => {
       doctorId,
       date,
       time,
-      reason
+      reason: trimmedReason
     });
     await appointment.save();
     res.status(201).json({ message: 'Appointment booked successfully', appointment });

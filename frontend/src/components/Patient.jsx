@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
+  AlertTriangle,
   Calendar,
   ClipboardList,
   HeartPulse,
   Hospital,
   LogOut,
   Pill,
+  Phone,
   Stethoscope,
   UserCircle,
   Wallet,
@@ -17,6 +19,7 @@ import { API_BASE_URL } from '../utils/apiBase';
 const navItems = [
   { id: 'Dashboard', label: 'Dashboard', icon: HeartPulse },
   { id: 'Book Appointment', label: 'Book Appointment', icon: Calendar },
+  { id: 'Emergency', label: 'Emergency', icon: AlertTriangle },
   { id: 'Doctors', label: 'Care Team', icon: Stethoscope },
   { id: 'Prescriptions', label: 'Prescriptions', icon: Pill },
   { id: 'Bills', label: 'Bills', icon: Wallet },
@@ -62,7 +65,15 @@ export default function PatientDashboard() {
     time: '',
     reason: '',
   });
+  const [emergencyForm, setEmergencyForm] = useState({
+    doctorId: '',
+    emergencyPriority: 'high',
+    symptoms: '',
+    contactPhone: '',
+    location: '',
+  });
   const [cancelingAppointmentId, setCancelingAppointmentId] = useState(null);
+  const [submittingEmergency, setSubmittingEmergency] = useState(false);
   const [popup, setPopup] = useState(null);
 
   const getToken = () => localStorage.getItem('token');
@@ -149,7 +160,7 @@ export default function PatientDashboard() {
 
   const patientName = patient ? `${patient.firstName} ${patient.lastName}` : 'Patient';
   const paidBills = bills.filter((bill) => bill.paymentStatus === 'paid').length;
-  const unpaidBills = bills.filter((bill) => bill.paymentStatus !== 'paid').length;
+  const emergencyAppointments = appointments.filter((appointment) => appointment.isEmergency);
   const today = new Date().toISOString().slice(0, 10);
 
   const handleBookingChange = (event) => {
@@ -159,6 +170,11 @@ export default function PatientDashboard() {
       [name]: value,
       ...(name === 'doctorId' || name === 'date' ? { time: '' } : {}),
     }));
+  };
+
+  const handleEmergencyChange = (event) => {
+    const { name, value } = event.target;
+    setEmergencyForm((current) => ({ ...current, [name]: value }));
   };
 
   const loadAvailableSlots = async () => {
@@ -230,6 +246,64 @@ export default function PatientDashboard() {
     }
   };
 
+  const handleEmergencyAppointment = async (event) => {
+    event.preventDefault();
+
+    if (!emergencyForm.doctorId || !emergencyForm.symptoms.trim() || !emergencyForm.contactPhone.trim() || !emergencyForm.location.trim()) {
+      setPopup({
+        title: 'Missing Emergency Details',
+        message: 'Please select a doctor and enter symptoms, contact phone, and current location.',
+        variant: 'error',
+        confirmLabel: 'OK',
+      });
+      return;
+    }
+
+    setSubmittingEmergency(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/patient/emergency-appointment`, {
+        method: 'POST',
+        headers: {
+          ...authHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(emergencyForm),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setPopup({
+          title: 'Emergency Request Failed',
+          message: data.error || 'Could not submit emergency appointment. Please try again.',
+          variant: 'error',
+          confirmLabel: 'OK',
+        });
+        return;
+      }
+
+      showSuccessPopup('Emergency Request Submitted', data.message || 'Emergency appointment request submitted.');
+      setEmergencyForm({
+        doctorId: '',
+        emergencyPriority: 'high',
+        symptoms: '',
+        contactPhone: '',
+        location: '',
+      });
+      loadDashboard();
+    } catch (error) {
+      setPopup({
+        title: 'Emergency Request Failed',
+        message: 'Could not connect to the server. Please try again.',
+        variant: 'error',
+        confirmLabel: 'OK',
+      });
+    } finally {
+      setSubmittingEmergency(false);
+    }
+  };
+
   const cancelAppointment = async (appointmentId) => {
     setCancelingAppointmentId(appointmentId);
 
@@ -293,7 +367,7 @@ export default function PatientDashboard() {
         <Card><CardBody><p className="text-sm text-slate-500">Upcoming appointments</p><p className="text-3xl font-bold text-slate-900 mt-2">{appointments.length}</p></CardBody></Card>
         <Card><CardBody><p className="text-sm text-slate-500">Care team</p><p className="text-3xl font-bold text-slate-900 mt-2">{careTeam.length}</p></CardBody></Card>
         <Card><CardBody><p className="text-sm text-slate-500">Prescriptions</p><p className="text-3xl font-bold text-slate-900 mt-2">{prescriptions.length}</p></CardBody></Card>
-        <Card><CardBody><p className="text-sm text-slate-500">Unpaid bills</p><p className="text-3xl font-bold text-slate-900 mt-2">{unpaidBills}</p></CardBody></Card>
+        <Card><CardBody><p className="text-sm text-slate-500">Emergency requests</p><p className="text-3xl font-bold text-rose-700 mt-2">{emergencyAppointments.length}</p></CardBody></Card>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
@@ -336,6 +410,121 @@ export default function PatientDashboard() {
           </CardBody>
         </Card>
       </div>
+    </div>
+  );
+
+  const renderEmergencyAppointment = () => (
+    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,0.8fr)] gap-6">
+      <Card>
+        <CardHeader title="Emergency Appointment" icon={AlertTriangle} />
+        <CardBody>
+          <form onSubmit={handleEmergencyAppointment} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="emergencyDoctorId" className="block text-sm font-medium text-slate-700 mb-1">Doctor</label>
+              <select
+                id="emergencyDoctorId"
+                name="doctorId"
+                value={emergencyForm.doctorId}
+                onChange={handleEmergencyChange}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                required
+              >
+                <option value="">Select doctor</option>
+                {doctors.map((doctor) => (
+                  <option key={doctor._id} value={doctor._id}>
+                    Dr. {doctor.firstName} {doctor.lastName} - {doctor.specialty}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="emergencyPriority" className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
+              <select
+                id="emergencyPriority"
+                name="emergencyPriority"
+                value={emergencyForm.emergencyPriority}
+                onChange={handleEmergencyChange}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-500"
+              >
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="moderate">Moderate</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="contactPhone" className="block text-sm font-medium text-slate-700 mb-1">Contact Phone</label>
+              <input
+                id="contactPhone"
+                name="contactPhone"
+                value={emergencyForm.contactPhone}
+                onChange={handleEmergencyChange}
+                placeholder="Phone number"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="location" className="block text-sm font-medium text-slate-700 mb-1">Current Location</label>
+              <input
+                id="location"
+                name="location"
+                value={emergencyForm.location}
+                onChange={handleEmergencyChange}
+                placeholder="Ward, room, address, or area"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                required
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label htmlFor="symptoms" className="block text-sm font-medium text-slate-700 mb-1">Symptoms</label>
+              <textarea
+                id="symptoms"
+                name="symptoms"
+                value={emergencyForm.symptoms}
+                onChange={handleEmergencyChange}
+                rows={4}
+                placeholder="Describe the emergency symptoms"
+                className="w-full rounded-md border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                required
+              />
+            </div>
+            <div className="md:col-span-2">
+              <button
+                type="submit"
+                disabled={submittingEmergency}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-rose-600 text-white font-medium hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <AlertTriangle size={16} />
+                {submittingEmergency ? 'Submitting...' : 'Submit Emergency Request'}
+              </button>
+            </div>
+          </form>
+        </CardBody>
+      </Card>
+      <Card>
+        <CardHeader title="Active Emergency Requests" icon={Phone} />
+        <CardBody>
+          {emergencyAppointments.length === 0 ? <EmptyState>No active emergency requests.</EmptyState> : (
+            <div className="space-y-3">
+              {emergencyAppointments.map((appointment) => (
+                <div key={appointment._id} className="rounded-md border border-rose-100 bg-rose-50/50 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-slate-900">Dr. {appointment.doctorId?.firstName} {appointment.doctorId?.lastName}</p>
+                      <p className="text-sm text-slate-500">{new Date(appointment.date).toLocaleDateString()} at {appointment.time}</p>
+                    </div>
+                    <span className="text-xs uppercase px-2 py-1 rounded bg-rose-100 text-rose-700">
+                      {appointment.emergencyStatus || 'pending'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-700 mt-2">{appointment.symptoms || appointment.reason}</p>
+                  <p className="text-xs text-slate-500 mt-2">{appointment.emergencyPriority} priority</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardBody>
+      </Card>
     </div>
   );
 
@@ -541,6 +730,7 @@ export default function PatientDashboard() {
 
   const renderContent = () => {
     if (activeTab === 'Book Appointment') return renderBookAppointment();
+    if (activeTab === 'Emergency') return renderEmergencyAppointment();
     if (activeTab === 'Doctors') return renderCareTeam();
     if (activeTab === 'Prescriptions') return renderPrescriptions();
     if (activeTab === 'Bills') return renderBills();

@@ -124,6 +124,58 @@ router.post('/book-appointment', patientOnly, async (req, res) => {
   }
 });
 
+router.post('/emergency-appointment', patientOnly, async (req, res) => {
+  try {
+    const {
+      doctorId,
+      emergencyPriority = 'moderate',
+      symptoms,
+      contactPhone,
+      location,
+    } = req.body;
+
+    if (!doctorId || !symptoms?.trim() || !contactPhone?.trim() || !location?.trim()) {
+      return res.status(400).send({ error: 'Doctor, symptoms, contact phone, and location are required' });
+    }
+
+    if (!['critical', 'high', 'moderate'].includes(emergencyPriority)) {
+      return res.status(400).send({ error: 'Invalid emergency priority' });
+    }
+
+    const doctor = await Doctor.findById(doctorId);
+    if (!doctor) {
+      return res.status(404).send({ error: 'Doctor not found' });
+    }
+
+    const now = new Date();
+    const emergencyTime = now.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    const appointment = new Appointment({
+      patientId: req.user.id,
+      doctorId,
+      date: now,
+      time: emergencyTime,
+      reason: symptoms.trim(),
+      isEmergency: true,
+      emergencyPriority,
+      emergencyStatus: 'pending',
+      symptoms: symptoms.trim(),
+      contactPhone: contactPhone.trim(),
+      location: location.trim(),
+    });
+
+    await appointment.save();
+    res.status(201).json({ message: 'Emergency appointment request submitted successfully', appointment });
+  } catch (error) {
+    require('../utils/logger').error('Error creating emergency appointment:', error);
+    res.status(500).send({ error: 'Server error' });
+  }
+});
+
 router.get('/available-slots', patientOnly, async (req, res) => {
   try {
     const { doctorId, date } = req.query;

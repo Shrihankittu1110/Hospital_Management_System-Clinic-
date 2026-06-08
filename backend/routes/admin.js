@@ -161,7 +161,7 @@ router.get('/patient-overview', async (req, res) => {
 // Get all appointments (admin only)
 router.get('/appointments', async (req, res) => {
   try {
-    const appointments = await Appointment.find({ status: 'scheduled' })
+    const appointments = await Appointment.find({ status: 'scheduled', isEmergency: { $ne: true } })
       .populate('patientId', 'firstName lastName')
       .populate('doctorId', 'firstName lastName')
       .sort({ date: 1, time: 1 });
@@ -169,6 +169,50 @@ router.get('/appointments', async (req, res) => {
     res.json(appointments);
   } catch (error) {
     require('../utils/logger').error('Error fetching appointments:', error);
+    res.status(500).send({ error: 'Server error' });
+  }
+});
+
+router.get('/emergency-appointments', async (req, res) => {
+  try {
+    const emergencyAppointments = await Appointment.find({
+      isEmergency: true,
+      status: 'scheduled'
+    })
+      .populate('patientId', 'firstName lastName email')
+      .populate('doctorId', 'firstName lastName specialty')
+      .sort({ emergencyPriority: 1, createdAt: 1 });
+
+    res.json(emergencyAppointments);
+  } catch (error) {
+    require('../utils/logger').error('Error fetching emergency appointments:', error);
+    res.status(500).send({ error: 'Server error' });
+  }
+});
+
+router.put('/emergency-appointments/:appointmentId/status', async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+    const { emergencyStatus } = req.body;
+
+    if (!['pending', 'triaged', 'in-care', 'resolved'].includes(emergencyStatus)) {
+      return res.status(400).send({ error: 'Invalid emergency status' });
+    }
+
+    const appointment = await Appointment.findOne({ _id: appointmentId, isEmergency: true });
+    if (!appointment) {
+      return res.status(404).send({ error: 'Emergency appointment not found' });
+    }
+
+    appointment.emergencyStatus = emergencyStatus;
+    if (emergencyStatus === 'resolved') {
+      appointment.status = 'completed';
+    }
+
+    await appointment.save();
+    res.json({ message: `Emergency appointment marked as ${emergencyStatus}`, appointment });
+  } catch (error) {
+    require('../utils/logger').error('Error updating emergency appointment:', error);
     res.status(500).send({ error: 'Server error' });
   }
 });

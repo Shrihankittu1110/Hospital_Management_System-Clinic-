@@ -1,6 +1,6 @@
 // Full Admins component implementation (from Admins.js)
 import React, { useState, useEffect } from 'react';
-import { Calendar, Users, UserCircle, Eye, EyeOff, Hospital, Stethoscope, Activity, UserPlus, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Calendar, Users, UserCircle, Eye, EyeOff, Hospital, Stethoscope, Activity, UserPlus, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MessagePopup from './MessagePopup';
 import { API_BASE_URL } from '../utils/apiBase';
@@ -85,6 +85,7 @@ const Select = ({ children, ...props }) => (
 const adminNavItems = [
 	{ id: 'Dashboard', label: 'Dashboard', icon: Activity },
 	{ id: 'Appointments', label: 'Appointments', icon: Calendar },
+	{ id: 'Emergency', label: 'Emergency', icon: AlertTriangle },
 	{ id: 'Doctor', label: 'Doctor', icon: Stethoscope },
 	{ id: 'Admin', label: 'Admin', icon: ShieldCheck },
 	{ id: 'Patients', label: 'Patients', icon: Users },
@@ -119,8 +120,10 @@ export default function AdminDashboard() {
 	const [doctorOverview, setDoctorOverview] = useState([]);
 	const [patientOverview, setPatientOverview] = useState([]);
 	const [appointments, setAppointments] = useState([]);
+	const [emergencyAppointments, setEmergencyAppointments] = useState([]);
 	const [dashboardLoading, setDashboardLoading] = useState(true);
 	const [appointmentsLoading, setAppointmentsLoading] = useState(true);
+	const [emergencyLoading, setEmergencyLoading] = useState(true);
 	const [hospitalCapacity] = useState(10000);
 	const navigate = useNavigate();
 
@@ -166,6 +169,7 @@ export default function AdminDashboard() {
 		fetchAdminProfile();
 		loadDashboardData();
 		fetchAppointments();
+		fetchEmergencyAppointments();
 	}, []);
 
 	const loadDashboardData = async () => {
@@ -316,6 +320,31 @@ export default function AdminDashboard() {
 		}
 	};
 
+	const fetchEmergencyAppointments = async () => {
+		try {
+			setEmergencyLoading(true);
+			const token = localStorage.getItem('token');
+			if (!token) {
+				return;
+			}
+			const response = await fetch(`${API_BASE_URL}/admin/emergency-appointments`, {
+				headers: {
+					'Authorization': `Bearer ${token}`
+				}
+			});
+			if (response.ok) {
+				const data = await response.json();
+				setEmergencyAppointments(data);
+			} else {
+				console.error('Failed to fetch emergency appointments');
+			}
+		} catch (error) {
+			console.error('Error fetching emergency appointments:', error);
+		} finally {
+			setEmergencyLoading(false);
+		}
+	};
+
 	const handleCompleteAppointment = (appointmentId) => {
 		setPopup({
 			title: 'Complete Appointment',
@@ -362,6 +391,38 @@ export default function AdminDashboard() {
 		}
 	};
 
+	const updateEmergencyStatus = async (appointmentId, emergencyStatus) => {
+		try {
+			const token = localStorage.getItem('token');
+			const response = await fetch(`${API_BASE_URL}/admin/emergency-appointments/${appointmentId}/status`, {
+				method: 'PUT',
+				headers: {
+					'Authorization': `Bearer ${token}`,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ emergencyStatus })
+			});
+			const data = await response.json();
+
+			if (response.ok) {
+				setPopup({
+					title: 'Emergency Updated',
+					message: data.message || `Emergency appointment marked as ${emergencyStatus}.`,
+					variant: 'success',
+					confirmLabel: 'OK',
+				});
+				fetchEmergencyAppointments();
+				fetchAppointments();
+				loadDashboardData();
+				return;
+			}
+
+			showErrorPopup('Emergency Update Failed', data.error || 'Failed to update emergency appointment.');
+		} catch (error) {
+			showErrorPopup('Emergency Update Failed', 'Could not connect to the server. Please try again.');
+		}
+	};
+
 	const handleCancelAppointment = (appointmentId) => {
 		setPopup({
 			title: 'Cancel Appointment',
@@ -383,7 +444,7 @@ export default function AdminDashboard() {
 						Loading dashboard data, please wait...
 					</p>
 				)}
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+				<div className="grid grid-cols-1 md:grid-cols-4 gap-6">
 					<Card>
 						<CardHeader icon={Stethoscope}>
 							<CardTitle className="text-sm font-medium">Total Doctors</CardTitle>
@@ -419,6 +480,19 @@ export default function AdminDashboard() {
 								<>
 									<div className="text-2xl font-bold">{occupancyRate}%</div>
 									<p className="text-xs text-gray-500">Bed occupancy rate</p>
+								</>
+							)}
+						</CardContent>
+					</Card>
+					<Card>
+						<CardHeader icon={AlertTriangle}>
+							<CardTitle className="text-sm font-medium">Emergency Queue</CardTitle>
+						</CardHeader>
+						<CardContent>
+							{emergencyLoading ? <LoadingMetric /> : (
+								<>
+									<div className="text-2xl font-bold text-rose-700">{emergencyAppointments.length}</div>
+									<p className="text-xs text-gray-500">Active urgent requests</p>
 								</>
 							)}
 						</CardContent>
@@ -586,6 +660,74 @@ export default function AdminDashboard() {
 											<div className="flex gap-2">
 												<Button className="px-3 py-1" onClick={() => handleCompleteAppointment(appointment._id)}>Complete</Button>
 												<Button variant="outline" className="px-3 py-1" onClick={() => handleCancelAppointment(appointment._id)}>Cancel</Button>
+											</div>
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+				)}
+			</CardContent>
+		</Card>
+	);
+
+	const renderEmergencyAppointments = () => (
+		<Card>
+			<CardHeader icon={AlertTriangle}>
+				<div className="flex items-center justify-between w-full gap-3">
+					<CardTitle>Emergency Appointments</CardTitle>
+					<Button variant="outline" className="px-3 py-1" onClick={fetchEmergencyAppointments}>Refresh</Button>
+				</div>
+			</CardHeader>
+			<CardContent>
+				{emergencyLoading ? (
+					<div className="rounded-md border border-rose-100 bg-rose-50 px-4 py-6 text-center">
+						<p className="text-sm font-medium text-rose-700">Loading emergency queue, please wait...</p>
+						<div className="mt-4 grid gap-3 animate-pulse">
+							<div className="h-4 rounded bg-rose-100" />
+							<div className="h-4 rounded bg-rose-100" />
+							<div className="h-4 rounded bg-rose-100" />
+						</div>
+					</div>
+				) : emergencyAppointments.length === 0 ? (
+					<p className="text-sm text-slate-500 bg-slate-50 border border-dashed border-slate-200 rounded-md px-4 py-6 text-center">
+						No active emergency appointments.
+					</p>
+				) : (
+					<div className="overflow-x-auto">
+						<table className="min-w-full text-sm">
+							<thead className="bg-slate-50 text-slate-600">
+								<tr>
+									<th className="text-left p-3">Patient</th>
+									<th className="text-left p-3">Doctor</th>
+									<th className="text-left p-3">Priority</th>
+									<th className="text-left p-3">Symptoms</th>
+									<th className="text-left p-3">Contact</th>
+									<th className="text-left p-3">Location</th>
+									<th className="text-left p-3">Status</th>
+									<th className="text-left p-3">Actions</th>
+								</tr>
+							</thead>
+							<tbody>
+								{emergencyAppointments.map((appointment) => (
+									<tr key={appointment._id} className="border-t align-top">
+										<td className="p-3">{appointment.patientId?.firstName} {appointment.patientId?.lastName}</td>
+										<td className="p-3">Dr. {appointment.doctorId?.firstName} {appointment.doctorId?.lastName}</td>
+										<td className="p-3">
+											<span className="rounded bg-rose-50 px-2 py-1 text-xs uppercase text-rose-700">
+												{appointment.emergencyPriority}
+											</span>
+										</td>
+										<td className="p-3 max-w-xs">{appointment.symptoms || appointment.reason}</td>
+										<td className="p-3">{appointment.contactPhone}</td>
+										<td className="p-3">{appointment.location}</td>
+										<td className="p-3 capitalize">{appointment.emergencyStatus}</td>
+										<td className="p-3">
+											<div className="flex flex-wrap gap-2">
+												<Button className="px-3 py-1" onClick={() => updateEmergencyStatus(appointment._id, 'triaged')}>Triaged</Button>
+												<Button className="px-3 py-1" onClick={() => updateEmergencyStatus(appointment._id, 'in-care')}>In Care</Button>
+												<Button variant="outline" className="px-3 py-1" onClick={() => updateEmergencyStatus(appointment._id, 'resolved')}>Resolve</Button>
 											</div>
 										</td>
 									</tr>
@@ -781,6 +923,7 @@ export default function AdminDashboard() {
 
 	const renderActiveTab = () => {
 		if (activeTab === 'Appointments') return renderAppointments();
+		if (activeTab === 'Emergency') return renderEmergencyAppointments();
 		if (activeTab === 'Doctor') return renderDoctor();
 		if (activeTab === 'Admin') return renderAdmin();
 		if (activeTab === 'Patients') return renderPatientOverview();

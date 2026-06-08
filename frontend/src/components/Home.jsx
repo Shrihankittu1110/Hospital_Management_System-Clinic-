@@ -305,7 +305,7 @@ const Home = () => {
 							<p className="font-semibold text-slate-800">Hospital Management System</p>
 							<p className="text-sm text-slate-500">24/7 patient support, appointment scheduling, and secure medical record management.</p>
 						</div>
-						<p className="text-sm text-slate-500">© 2024 Hospital Management. All rights reserved.</p>
+						<p className="text-sm text-slate-500">© 2026 Hospital Management. All rights reserved.</p>
 					</div>
 					<div className="flex flex-col gap-2 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
 						<p>Address: 123 Health Care Ave, Medical City</p>

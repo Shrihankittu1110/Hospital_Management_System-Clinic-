@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import MessagePopup from './MessagePopup';
 import { API_BASE_URL } from '../utils/apiBase';
 
@@ -18,6 +18,7 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 	const [showPassword, setShowPassword] = useState(false);
 	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 	const [popup, setPopup] = useState(null);
+	const [isCreatingUser, setIsCreatingUser] = useState(false);
 
 	const handleChange = (e) => {
 		const { name, value } = e.target;
@@ -26,11 +27,12 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 
 	const validateForm = () => {
 		let newErrors = {};
-		if (!formData.firstName) newErrors.firstName = "First name is required";
-		if (!formData.lastName) newErrors.lastName = "Last name is required";
-		if (!formData.email) newErrors.email = "Email is required";
+		if (!formData.firstName.trim()) newErrors.firstName = "First name is required";
+		if (!formData.lastName.trim()) newErrors.lastName = "Last name is required";
+		if (!formData.email.trim()) newErrors.email = "Email is required";
 		else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = "Email is invalid";
 		if (!formData.password) newErrors.password = "Password is required";
+		else if (!/\S/.test(formData.password)) newErrors.password = "Password must contain at least one character";
 		else if (formData.password.length < 6) newErrors.password = "Password must be at least 6 characters";
 		if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match";
 		setErrors(newErrors);
@@ -39,7 +41,12 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
+		if (isCreatingUser) {
+			return;
+		}
+
 		if (validateForm()) {
+			setIsCreatingUser(true);
 			try {
 				const response = await fetch(`${API_BASE_URL}/signup`, {
 					method: 'POST',
@@ -47,9 +54,9 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 						'Content-Type': 'application/json',
 					},
 					body: JSON.stringify({
-						firstName: formData.firstName,
-						lastName: formData.lastName,
-						email: formData.email,
+						firstName: formData.firstName.trim(),
+						lastName: formData.lastName.trim(),
+						email: formData.email.trim(),
 						password: formData.password,
 						role: 'patient',
 					}),
@@ -74,6 +81,8 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 				}
 			} catch (error) {
 				setErrors({ ...errors, submit: 'An error occurred. Please try again.' });
+			} finally {
+				setIsCreatingUser(false);
 			}
 		}
 	};
@@ -108,6 +117,7 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 									value={formData.firstName} 
 									onChange={handleChange} 
 									className={inputClass}
+									disabled={isCreatingUser}
 									required
 								/>
 								{errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
@@ -120,6 +130,7 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 									value={formData.lastName} 
 									onChange={handleChange} 
 									className={inputClass}
+									disabled={isCreatingUser}
 									required
 								/>
 								{errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
@@ -134,6 +145,7 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 								value={formData.email} 
 								onChange={handleChange} 
 								className={inputClass}
+								disabled={isCreatingUser}
 								required
 							/>
 							{errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
@@ -148,12 +160,14 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 									value={formData.password} 
 									onChange={handleChange} 
 									className={inputClass}
+									disabled={isCreatingUser}
 									required
 								/>
 								<button 
 									type="button" 
 									className="absolute inset-y-0 right-0 pr-3 flex items-center text-blue-600 hover:text-blue-800"
 									onClick={() => setShowPassword(!showPassword)}
+									disabled={isCreatingUser}
 								>
 									{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
 								</button>
@@ -170,12 +184,14 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 									value={formData.confirmPassword} 
 									onChange={handleChange} 
 									className={inputClass}
+									disabled={isCreatingUser}
 									required
 								/>
 								<button 
 									type="button" 
 									className="absolute inset-y-0 right-0 pr-3 flex items-center text-blue-600 hover:text-blue-800"
 									onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+									disabled={isCreatingUser}
 								>
 									{showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
 								</button>
@@ -184,9 +200,11 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 						</div>
 						<button 
 							type="submit" 
-							className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+							disabled={isCreatingUser}
+							className="w-full inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:cursor-not-allowed disabled:bg-blue-400"
 						>
-							Create Account
+							{isCreatingUser && <Loader2 className="h-4 w-4 animate-spin" />}
+							{isCreatingUser ? 'Creating account, please wait...' : 'Create Account'}
 						</button>
 					</form>
 				</div>
@@ -201,6 +219,7 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 								}
 								navigate('/login');
 							}}
+							disabled={isCreatingUser}
 							className="text-blue-600 font-semibold hover:underline"
 						>
 							Log in
@@ -240,6 +259,7 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 									value={formData.firstName} 
 									onChange={handleChange} 
 									className={inputClass}
+									disabled={isCreatingUser}
 								/>
 								{errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
 							</div>
@@ -251,6 +271,7 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 									value={formData.lastName} 
 									onChange={handleChange} 
 									className={inputClass}
+									disabled={isCreatingUser}
 								/>
 								{errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
 							</div>
@@ -264,6 +285,7 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 								value={formData.email} 
 								onChange={handleChange} 
 								className={inputClass}
+								disabled={isCreatingUser}
 							/>
 							{errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
 						</div>
@@ -277,11 +299,13 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 									value={formData.password} 
 									onChange={handleChange} 
 									className={inputClass}
+									disabled={isCreatingUser}
 								/>
 								<button 
 									type="button" 
 									className="absolute inset-y-0 right-0 pr-3 flex items-center text-blue-600 hover:text-blue-800"
 									onClick={() => setShowPassword(!showPassword)}
+									disabled={isCreatingUser}
 								>
 									{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
 								</button>
@@ -298,11 +322,13 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 									value={formData.confirmPassword} 
 									onChange={handleChange} 
 									className={inputClass}
+									disabled={isCreatingUser}
 								/>
 								<button 
 									type="button" 
 									className="absolute inset-y-0 right-0 pr-3 flex items-center text-blue-600 hover:text-blue-800"
 									onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+									disabled={isCreatingUser}
 								>
 									{showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
 								</button>
@@ -311,16 +337,18 @@ const SignUp = ({ onClose, onSwitchToLogin }) => {
 						</div>
 						<button 
 							type="submit" 
-							className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+							disabled={isCreatingUser}
+							className="w-full inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:cursor-not-allowed disabled:bg-blue-400"
 						>
-							Create Account
+							{isCreatingUser && <Loader2 className="h-4 w-4 animate-spin" />}
+							{isCreatingUser ? 'Creating account, please wait...' : 'Create Account'}
 						</button>
 					</form>
 				</div>
 				<div className="bg-blue-50 px-6 py-4 rounded-b-lg">
 					<p className="text-sm text-blue-600 text-center">
 						Already have an account?{" "}
-						<button onClick={() => navigate('/login')} className="text-blue-600 font-semibold hover:underline">
+						<button onClick={() => navigate('/login')} disabled={isCreatingUser} className="text-blue-600 font-semibold hover:underline">
 							Log in
 						</button>
 					</p>

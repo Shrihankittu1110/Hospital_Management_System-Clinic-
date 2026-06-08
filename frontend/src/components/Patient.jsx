@@ -62,6 +62,7 @@ export default function PatientDashboard() {
     time: '',
     reason: '',
   });
+  const [cancelingAppointmentId, setCancelingAppointmentId] = useState(null);
   const [popup, setPopup] = useState(null);
 
   const getToken = () => localStorage.getItem('token');
@@ -229,6 +230,63 @@ export default function PatientDashboard() {
     }
   };
 
+  const cancelAppointment = async (appointmentId) => {
+    setCancelingAppointmentId(appointmentId);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/patient/appointments/${appointmentId}`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setPopup({
+          title: 'Cancellation Failed',
+          message: data.error || 'Could not cancel appointment. Please try again.',
+          variant: 'error',
+          confirmLabel: 'OK',
+        });
+        return;
+      }
+
+      showSuccessPopup('Appointment Cancelled', data.message || 'Your appointment has been cancelled.');
+      loadDashboard();
+    } catch (error) {
+      setPopup({
+        title: 'Cancellation Failed',
+        message: 'Could not connect to the server. Please try again.',
+        variant: 'error',
+        confirmLabel: 'OK',
+      });
+    } finally {
+      setCancelingAppointmentId(null);
+    }
+  };
+
+  const requestCancelAppointment = (appointment) => {
+    setPopup({
+      title: 'Cancel Appointment',
+      message: `Cancel your appointment with Dr. ${appointment.doctorId?.firstName || ''} ${appointment.doctorId?.lastName || ''}?`,
+      variant: 'confirm',
+      confirmLabel: 'Cancel Appointment',
+      cancelLabel: 'Keep Appointment',
+      onConfirm: () => cancelAppointment(appointment._id),
+      onCancel: () => setPopup(null),
+    });
+  };
+
+  const renderCancelButton = (appointment) => (
+    <button
+      type="button"
+      onClick={() => requestCancelAppointment(appointment)}
+      disabled={cancelingAppointmentId === appointment._id}
+      className="inline-flex items-center justify-center rounded-md border border-rose-200 px-2.5 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {cancelingAppointmentId === appointment._id ? 'Cancelling...' : 'Cancel'}
+    </button>
+  );
+
   const renderDashboard = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -245,8 +303,13 @@ export default function PatientDashboard() {
               <div className="space-y-3">
                 {appointments.slice(0, 4).map((appointment) => (
                   <div key={appointment._id} className="rounded-md border border-slate-100 p-3">
-                    <p className="font-semibold text-slate-900">Dr. {appointment.doctorId?.firstName} {appointment.doctorId?.lastName}</p>
-                    <p className="text-sm text-slate-500">{new Date(appointment.date).toLocaleDateString()} at {appointment.time}</p>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-slate-900">Dr. {appointment.doctorId?.firstName} {appointment.doctorId?.lastName}</p>
+                        <p className="text-sm text-slate-500">{new Date(appointment.date).toLocaleDateString()} at {appointment.time}</p>
+                      </div>
+                      {renderCancelButton(appointment)}
+                    </div>
                     <p className="text-sm text-slate-600 mt-1">{appointment.reason}</p>
                   </div>
                 ))}
@@ -384,8 +447,13 @@ export default function PatientDashboard() {
             <div className="space-y-3">
               {appointments.map((appointment) => (
                 <div key={appointment._id} className="rounded-md border border-slate-100 p-3">
-                  <p className="font-semibold text-slate-900">Dr. {appointment.doctorId?.firstName} {appointment.doctorId?.lastName}</p>
-                  <p className="text-sm text-slate-500">{new Date(appointment.date).toLocaleDateString()} at {appointment.time}</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-slate-900">Dr. {appointment.doctorId?.firstName} {appointment.doctorId?.lastName}</p>
+                      <p className="text-sm text-slate-500">{new Date(appointment.date).toLocaleDateString()} at {appointment.time}</p>
+                    </div>
+                    {renderCancelButton(appointment)}
+                  </div>
                   <p className="text-sm text-slate-600 mt-1">{appointment.reason}</p>
                 </div>
               ))}

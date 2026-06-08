@@ -263,8 +263,13 @@ router.delete('/appointments/:appointmentId', patientOnly, async (req, res) => {
       return res.status(403).send({ error: 'Unauthorized to cancel this appointment' });
     }
 
-    await Appointment.findByIdAndDelete(appointmentId);
-    res.json({ message: 'Appointment cancelled successfully' });
+    if (appointment.status !== 'scheduled') {
+      return res.status(400).send({ error: 'Only scheduled appointments can be cancelled' });
+    }
+
+    appointment.status = 'cancelled';
+    await appointment.save();
+    res.json({ message: 'Appointment cancelled successfully', appointment });
   } catch (error) {
     require('../utils/logger').error('Error cancelling appointment:', error);
     res.status(500).send({ error: 'Server error' });

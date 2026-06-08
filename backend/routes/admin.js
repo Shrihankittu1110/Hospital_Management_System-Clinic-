@@ -15,7 +15,23 @@ router.post('/add-doctor', async (req, res) => {
   const { firstName, lastName, email, specialty, licenseNumber, phoneNumber, password } = req.body;
 
   try {
-    const doctor = new Doctor({ firstName, lastName, email, specialty, licenseNumber, phoneNumber, password });
+    if (!firstName?.trim() || !lastName?.trim() || !email?.trim() || !specialty?.trim() || !licenseNumber?.trim() || !phoneNumber?.trim() || !password) {
+      return res.status(400).send({ error: 'All doctor fields are required' });
+    }
+
+    if (!/\S/.test(password)) {
+      return res.status(400).send({ error: 'Password must contain at least one character' });
+    }
+
+    const doctor = new Doctor({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.trim(),
+      specialty: specialty.trim(),
+      licenseNumber: licenseNumber.trim(),
+      phoneNumber: phoneNumber.trim(),
+      password
+    });
     await doctor.save();
     res.status(201).send({ message: 'Doctor added successfully' });
   } catch (error) {
@@ -30,7 +46,20 @@ router.post('/add-admin', async (req, res) => {
   const { firstName, lastName, email, password } = req.body;
 
   try {
-    const admin = new Admin({ firstName, lastName, email, password });
+    if (!firstName?.trim() || !lastName?.trim() || !email?.trim() || !password) {
+      return res.status(400).send({ error: 'First name, last name, email, and password are required' });
+    }
+
+    if (!/\S/.test(password)) {
+      return res.status(400).send({ error: 'Password must contain at least one character' });
+    }
+
+    const admin = new Admin({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.trim(),
+      password
+    });
     await admin.save();
     res.status(201).send({ message: 'Admin added successfully' });
   } catch (error) {

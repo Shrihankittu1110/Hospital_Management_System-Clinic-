@@ -27,6 +27,19 @@ const Login = ({ onClose, onSwitchToSignup }) => {
 		}
 
 		setError(null);
+		if (!email.trim()) {
+			setError('Email is required');
+			return;
+		}
+		if (!password) {
+			setError('Password is required');
+			return;
+		}
+		if (!/\S/.test(password)) {
+			setError('Password must contain at least one character');
+			return;
+		}
+
 		setIsLoggingIn(true);
 
 		try {
@@ -35,13 +48,13 @@ const Login = ({ onClose, onSwitchToSignup }) => {
 				headers: {
 					'Content-Type': 'application/json',
 				},
-				body: JSON.stringify({ email, password, role: selectedRole }),
+				body: JSON.stringify({ email: email.trim(), password, role: selectedRole }),
 			});
 			if (response.ok) {
 				const data = await response.json();
 				localStorage.setItem('token', data.token);
 				localStorage.setItem('userRole', data.role);
-				localStorage.setItem('userEmail', email);
+				localStorage.setItem('userEmail', email.trim());
 				const roleLabel = roles.find((role) => role.id === data.role)?.label || 'User';
 				const nextRoute = data.role === 'admin' ? '/admin' : data.role === 'doctor' ? '/doctor' : '/patient';
 				setPopup({

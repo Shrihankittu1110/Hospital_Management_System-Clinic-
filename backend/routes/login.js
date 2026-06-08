@@ -11,8 +11,12 @@ const router = express.Router();
 router.post('/', asyncHandler(async (req, res) => {
   const { email, password, role } = req.body;
 
-  if (!email || !password || !role) {
+  if (!email?.trim() || !password || !role) {
     throw new ApiError(400, 'Email, password, and role are required');
+  }
+
+  if (!/\S/.test(password)) {
+    throw new ApiError(400, 'Password must contain at least one character');
   }
 
   if (!['patient', 'doctor', 'admin'].includes(role)) {
@@ -21,11 +25,11 @@ router.post('/', asyncHandler(async (req, res) => {
 
   let user;
   if (role === 'doctor') {
-    user = await Doctor.findOne({ email });
+    user = await Doctor.findOne({ email: email.trim() });
   } else if (role === 'admin') {
-    user = await Admin.findOne({ email });
+    user = await Admin.findOne({ email: email.trim() });
   } else {
-    user = await User.findOne({ email, role });
+    user = await User.findOne({ email: email.trim(), role });
   }
 
   if (!user) {

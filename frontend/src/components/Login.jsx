@@ -35,8 +35,8 @@ const Login = ({ onClose, onSwitchToSignup }) => {
 			setError('Password is required');
 			return;
 		}
-		if (!/\S/.test(password)) {
-			setError('Password must contain at least one character');
+		if (/\s/.test(password)) {
+			setError('Password cannot contain spaces');
 			return;
 		}
 

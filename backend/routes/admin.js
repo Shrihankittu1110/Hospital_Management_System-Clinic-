@@ -19,8 +19,8 @@ router.post('/add-doctor', async (req, res) => {
       return res.status(400).send({ error: 'All doctor fields are required' });
     }
 
-    if (!/\S/.test(password)) {
-      return res.status(400).send({ error: 'Password must contain at least one character' });
+    if (/\s/.test(password)) {
+      return res.status(400).send({ error: 'Password cannot contain spaces' });
     }
 
     const doctor = new Doctor({
@@ -50,8 +50,8 @@ router.post('/add-admin', async (req, res) => {
       return res.status(400).send({ error: 'First name, last name, email, and password are required' });
     }
 
-    if (!/\S/.test(password)) {
-      return res.status(400).send({ error: 'Password must contain at least one character' });
+    if (/\s/.test(password)) {
+      return res.status(400).send({ error: 'Password cannot contain spaces' });
     }
 
     const admin = new Admin({

@@ -458,8 +458,8 @@ export default function AdminDashboard() {
 	const handleAddDoctor = async (event) => {
 		event.preventDefault();
 
-		if (!/\S/.test(doctorData.password)) {
-			showErrorPopup('Doctor Creation Failed', 'Password must contain at least one character.');
+		if (/\s/.test(doctorData.password)) {
+			showErrorPopup('Doctor Creation Failed', 'Password cannot contain spaces.');
 			return;
 		}
 
@@ -499,8 +499,8 @@ export default function AdminDashboard() {
 	const handleAddAdmin = async (event) => {
 		event.preventDefault();
 
-		if (!/\S/.test(adminData.password)) {
-			showErrorPopup('Admin Creation Failed', 'Password must contain at least one character.');
+		if (/\s/.test(adminData.password)) {
+			showErrorPopup('Admin Creation Failed', 'Password cannot contain spaces.');
 			return;
 		}
 

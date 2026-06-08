@@ -15,8 +15,8 @@ router.post('/', asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Email, password, and role are required');
   }
 
-  if (!/\S/.test(password)) {
-    throw new ApiError(400, 'Password must contain at least one character');
+  if (/\s/.test(password)) {
+    throw new ApiError(400, 'Password cannot contain spaces');
   }
 
   if (!['patient', 'doctor', 'admin'].includes(role)) {
